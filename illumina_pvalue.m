@@ -1,5 +1,11 @@
-function [diff_geneidx,goody] = illumina_pvalue1(genes,namey,tumor_data,normal_data)
+function [diff_geneidx,goody] = illumina_pvalue2(genes,namey,tumor_data,normal_data)
+%Get significant genes and p-values, fdrs for them
 
+%Significant difference set
+sig_dif=0.17;
+
+%Sig p-value set
+sig_p=.01;
 
 nTumor=size(tumor_data,2);
 nNormal=size(normal_data,2);
@@ -12,48 +18,31 @@ meanNormal=mean(normal_data,2);
 
 pValues = mattest(tumor_data, normal_data, 'Permute', 1e5);
 
-
-%The differential score of 13 corresponds to a p-value of 0.05, the differential score of 20
-%corresponds to a p-value of 0.01, and the differential score of 30
-%corresponds to a p-value of 0.001. A positive differential score
-%represents up regulation, while a negative score represents down
-%regulation. The differential score of 13 corresponds to a p-value of 0.05,
-%the differential score of 20 corresponds to a p-value of 0.01, and the
-%differential score of 30 corresponds to a p-value of 0.001. A positive
-%differential score represents up regulation, while a negative score represents down regulation.
-
-    
-diffscore = @(p, avgTest, avgRef) -10*sign(avgTest - avgRef).*log10(p);
-
-diffScores = diffscore(pValues, meanTumor, meanNormal);
+aDiff = meanTumor-meanNormal;
 
 [pFDR, qValues] = mafdr(pValues);
 
-diffScoresFDRQ = diffscore(qValues, meanTumor, meanNormal);
+close all
+%Make volcano-like plot of methylation
+plot(aDiff, -log10(pValues), '.');
+%Get edges of axes
+xLims=get(gca, 'XLim');
+yLims=get(gca, 'YLim');
+hold all
+plot(xLims, [-log10(sig_p) -log10(sig_p)], '-.r', 'LineWidth', 1.5);
+plot([-sig_dif -sig_dif], yLims, '-.r', 'LineWidth', 1.5);
+plot([sig_dif sig_dif], yLims, '-.r', 'LineWidth', 1.5);
 
-diffStruct = mavolcanoplot(tumor_data, normal_data, qValues, 'pcutoff', 0.01, ...
-    'LogTrans', false, 'Labels', genes, 'foldchange', 1.01,'PlotOnly', true);
+print('-dpdf', ['Movie/' namey '_volcano.pdf']);
 
-volcano_plot(namey, 0);
+close all;
 
-close all hidden;
+diff_geneidx=((aDiff<=-.17)|(aDiff>=.17))&(pValues<=.01);
 
-nDiffGenes=size(diffStruct.GeneLabels,1);
-nGenes=size(genes,1);
-
-diff_geneidx = false(nGenes, 1);
-
-for i = 1:nDiffGenes
-    index = find(strcmpi(diffStruct.GeneLabels{i},genes));
-    
-    diff_geneidx(index)=1;
-    
-    goody(i).gene=diffStruct.GeneLabels{i};
-    goody(i).FDR=pFDR(i);
-    goody(i).pValues=diffStruct.PValues(i);
-    goody(i).Fold=diffStruct.FoldChanges(i);
-end
-
+goody.gene=genes(diff_geneidx);
+goody.FDR=pFDR(diff_geneidx);
+goody.pValues=pValues(diff_geneidx);
+goody.aDiff=aDiff(diff_geneidx);
 
     
 end

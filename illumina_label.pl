@@ -58,9 +58,12 @@ while (<>) {
 
     $feat = new Bio::SeqFeature::Generic(-start => $m,
 					 -end => $n,
-					 -primary_tag => $probe_id,
-					 -tag => {Illumina_Score => $il_score, Fail_Code => $fail_code});
-    $seq_object->add_SeqFeature($feat);
+					 -primary_tag => "Illumina_Probe",
+					 -tag => {Illumina_id => $probe_id, Illumina_Score => $il_score, Fail_Code => $fail_code});
+
+    if ($il_score != 0) {
+	$seq_object->add_SeqFeature($feat);
+    }
 
 
     $io = Bio::SeqIO->new(-format => "genbank", file => ">$gbname");

@@ -10,7 +10,7 @@
 inpath  <- "~wtimp/cancer_dmr/From_Rafa"
   #path to where your sMM.rda, M.rda, otherstuff.rda, 
   #and object.rda charm objects are, which must exist.
-outpath <- "~pmurakam/feinberg/winston" 
+outpath <- "~/cancer_dmr/Analysis"
   #path to where you want your output files to go.
 numplots <- 300 #number of plots you want. e.g., if numplots=100, then the 
                 #top 100 regions will be plotted in the plot.pdf file.
@@ -36,7 +36,7 @@ if(!exists("M")){
   M=M*median(tmpmed)
 }
 #load("object.rda") #need NAMES and object
-obj <- read.csv("~/feinberg/winston/SupData4.csv")
+obj <- read.csv("~/cancer_dmr/Analysis/Top5_try.csv")
 
 ###############################################################
 ####Load in Rafa's objects (hopefully he won't move them):#####
@@ -51,7 +51,7 @@ mypar <-function(a=1,b=1,brewer.n=8,brewer.name="Dark2",...){
 #needs to modified to handle different species, and functions2mouse.R
 #needs to have every "mm#" be mm8, so replace with:
 if(spec=="human") source("~pmurakam/feinberg/CharmFiles/functions.R") 
-if(spec=="mouse") source("~pmurakam/feinberg/CharmFiles/functions2mouse.R")
+
 #source("../cis-genome.R") #handles both human and mouse
 source("~pmurakam/feinberg/CharmFiles/cis-genome.R") #changed paths 
   #inside for human so need not be on node 36, and changed mouse 
@@ -70,18 +70,7 @@ if(spec=="human"){
 #    names(CTCF)=c("chr","start","end")
 #    load("~ririzarr/projects/cegs/where-is-methylation/rdas/bivalent.rda")
 }
-if(spec=="mouse"){
-    #load("~pmurakam/feinberg/CharmFiles/CpGmm9.rda") #I retrieved 
-        #this from UCSC >downloads >mouse >Annotation Database and
-        #just took columns 2-4.
-    #cpg.cur <- cpg.mm9
-    #library(BSgenome.Mmusculus.UCSC.mm9)
-    load("~hwu/Project/Feinberg/CpG/mm8/data/current-cpg.rda") 
-    #NB: functions2mouse.R, cis-genome.R, and the rest of this file,
-    #are hardcoded right now to use mm8.
-#    library(BSgenome.Mmusculus.UCSC.mm8,lib.loc=Rlibspath)
-    library(BSgenome.Mmusculus.UCSC.mm8)
-}
+
 ocpgi = data.frame(chr=I(cpg.cur[,1]),start=as.numeric(cpg.cur[,2]),
                    end=as.numeric(cpg.cur[,3]))
 ocpgi=ocpgi[ocpgi$chr%in%CHRLEVELS,]
@@ -162,10 +151,16 @@ Indexes=split(seq(along=pns),pns) #pns is from otherstuff.rda
       
       legend("topright",NAMES[comps],col=1:length(comps),lty=1,lwd=2)
       #I add this to just this file:
-      rug(c(obj$maxprobestartT[i],obj$maxprobestartT[i]+50),col="blue",
+      rug(c(obj$probe1[i],obj$maxprobestartT[i]+50),col="red",
           lwd=3,side=1)
-      rug(c(obj$maxprobestartD[i],obj$maxprobestartD[i]+50),col="gray",
+      rug(c(obj$probe2[i],obj$maxprobestartD[i]+50),col="orange",
           lwd=3,side=3)
+      rug(c(obj$probe3[i],obj$maxprobestartD[i]+50),col="green",
+          lwd=3,side=1)
+      rug(c(obj$probe4[i],obj$maxprobestartD[i]+50),col="blue",
+          lwd=3,side=3)
+      rug(c(obj$probe4[i],obj$maxprobestartD[i]+50),col="purple",
+          lwd=3,side=1)
       
       ##PLOT CPG ISLANDS
       if(spec=="human") seq<-Hsapiens[[as.character(thechr) ]]

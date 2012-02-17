@@ -32,7 +32,7 @@ $data_file =~ s/.csv/_mat_data.csv/;
 
 
 #Create Convert Table
-$naming_file = shift;
+$naming_file = "031109_renamed1.csv";
 
 open(CONVERT, "< $naming_file");
 while (<CONVERT>) {
@@ -55,6 +55,10 @@ open(DATA, ">", $data_file);
 $header=<CSVFILE>;
 @header_field = split(/,/,$header);
 $header_size = @header_field;
+
+#Print Sample Header File
+print SAMPLE "Sample_ID,Class,Sample_ID_2,Other_Note\n";
+print DATA "Probe_ID,";
 
 #Take only the avg values, which are every fifth column starting at 15 - extract the name
 
@@ -132,7 +136,8 @@ while (<CSVFILE>) {
   #Description - to do this, I need to match the ID to the match file
   foreach $aref (@convert_table) {
     if (@$aref[0] =~ m/$fields[0]/) {
-	print TARGET "@$aref[1],$fields[0]\n";
+      #ProbeID, IlluminaID, chromosome, start, end(same in my case), good_probe
+	print TARGET "@$aref[1],$fields[0],$fields[1],$fields[11],$fields[11], 1\n";
 	last;
       } 
     }
@@ -150,6 +155,7 @@ while (<CSVFILE>) {
     print DATA "$fields[$i+3],";
     #Bead STD
     print DATA "$fields[$i+4],";
+
 
   }
 

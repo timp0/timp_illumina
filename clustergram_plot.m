@@ -1,4 +1,4 @@
-function [] = clustergram_plot(namey)
+function [] = clustergram_plot2(namey,huge)
 %This function programmatically gets the handle for the clustergram and
 %prints it.  
 
@@ -18,8 +18,12 @@ if length(cffighnd)>1
     warning('More than one clustergram open!!');
     cffighnd = cffighnd(end);
 end
-%set(cffighnd, 'paperOrientation', 'landscape');
+if huge
+    set(cffighnd, 'paperSize', [20 20], 'paperPosition', [.25 .25 19.75 19.75]);
+end
+
 print(cffighnd, '-dpdf', ['Movie\' namey '.pdf']);
+print(cffighnd, '-painters','-dpdf', ['Movie\' namey '_ai.pdf']);
 
 
 

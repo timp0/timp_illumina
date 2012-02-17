@@ -1,30 +1,56 @@
-a=4
-mu=0.5
+ball_plot1 <- function () {
+  
+  a=4
+  mu=0.5
+  r=0.05
+  
+  x=seq(from=0, to=1, by=0.001)
+  y=a*(x-mu)^2
+  theta=atan(2*a*(x-mu))-pi/2
+  
+  x2=x+r*cos(theta)
+  y2=a*(x-mu)^2+r*sin(theta)
+  
+  z=ou_sim2(deltat=0.25)
+  
+  library(plotrix)
+  
+  for (i in 1:length(z$t)) {
+    jpeg(paste("Ball/a", i, ".jpg", sep=""))
+    
+    plot(x2,y2,type="l",lwd=2)
+    v=z$simul[i,1]
+    
+    draw.circle(v, a*(v-mu)^2, r, col="red")
+    dev.off()
+  }
+       
+}
 
-x=seq(from=0, to=1, by=0.001)
-y=a*(x-mu)^2
-theta=atan(2*a*(x-mu))-pi/2
+spring_plot1 <- function(x=0) {  
+  s=0.05
+  h=0.05
+  
+  plot(c(-1,-1+s), c(0,0), type="l", lwd=2, xlim=c(-1, 1.05), asp=1)
 
-x2=x+0.05*cos(theta)
-y2=a*(x-mu)^2+0.05*sin(theta)
+  lines(c(-1, -1), c(-1e3, 1e3), lwd=2)
 
-library(plotrix)
+  spring_x=seq(from=-1+s, to=x-s, length=10)
+  spring_y=c(0,h,-h,h,-h,h,-h,h,-h,0)
+  
+  lines(spring_x, spring_y, lwd=2)
+  lines(c(x-s, x), c(0,0), lwd=2)
+  draw.circle(x,0,h, col='red')
 
-plot(x2,y2,type="l")
-lines(x,y,col="red")
-
-draw.circle(x[300], y[300], 0.05)
-
-b=1
-z=b*(x-1)^2
-tz=atan(2*b*(x-1))-pi/2
-
-x3=x+0.05*cos(tz)
-y3=b*(x-1)^2+0.05*sin(tz)
-
-plot(x3,y3,type="l",xlim=c(-0.05,1.05),ylim=c(-0.05,1.05))
-lines(c(1,1.05,1.05),c(-0.05,-0.05,1e5))
-lines(x,z,col="red")
+}
 
 
 
+spring_para_plot1 <- function(x=0) {
+
+  layout(c(1,2), heights=c(0.3,0.7))
+  par(mar=c(1,2.2,1,0.2))
+
+
+
+  

@@ -23,7 +23,6 @@ plotCHARM <- function(chromy,start,end,class=c(1:10)) {
 
 }
 
-
 plotfullCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),controls=TRUE) {
 
   ##
@@ -81,3 +80,53 @@ plotfullCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),cont
   }
   dev.off()
 }
+
+heatCHARM <- function(data, namey) {
+
+
+}
+
+plotPlatform <- function(data, namey) {
+  #Ok - plot avg of 5 closest CHARM values in the area vs the avg probe value
+
+  #First let's calculate the difference value for each probe in Illumina
+  norm=(data$samp$Progression==0)&(data$samp$Class==3)
+  tum=(data$samp$Progression>2)&(data$samp$Class==3)
+
+  normvals=rowMeans(data$qbeta[,norm])
+  tumvals=rowMeans(data$qbeta[,tum])
+  ildiff=tumvals-normvals
+
+  probec=ifelse(data$probes$UCSC_Dist_to_Island>0,"red", "green")
+  probec[data$probes$UCSC_Dist_to_Island>2000]="blue"
+  
+  charmdiff=numeric()
+  #Get CHARM diffs
+  for (i in 1:384) {
+    ##Matching chromosome check
+    chrom=charm_nfo$chr!=paste("chr",data$probes$Chromosome[i],sep="")
+    #distance to illumina probe i
+    distbp=abs(charm_nfo$loc-data$probes$Start_loc[i])
+    ##sort and take top 10
+    rel=order(chrom,distbp)[1:5]
+    charmdiff[i]=median(sMM[rel,5]-sMM[rel,4])
+    ##Probe colors - red for island, green for shore, blue for far
+  }
+  
+  pdf(file.path("Movie", namey))
+  plot(ildiff,charmdiff, col=probec, pch=19, ylab="CHARM difference", xlab="Illumina difference")
+  abline(h=0, lty=2)
+  abline(v=0, lty=2)
+  
+  dev.off() 
+  
+}
+
+
+
+
+##CHARM probe loc load
+load("CHARM_nfo.rda")
+
+##Load CHARM Data
+load("CHARM_data.rda")

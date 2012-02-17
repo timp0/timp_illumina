@@ -16,15 +16,22 @@ use warnings;
 while (<>) {
     $linein = $_;
     if (/LOCUS       (\S+)/) {
-	$namey = $1;
-	if ($namey =~ /(\S+)_/) {
+	$ori_namey = $1;
+	if ($ori_namey =~ /(\S+)_/) {
 	    $namey=$1;
-	} 
+	    #Quotemeta puts backslahes before control variables
+	    $ori_namey= quotemeta($ori_namey);
+	    $linein =~ s/$ori_namey/$namey/;
+	} else {
+	    $namey = $ori_namey;
+	}
 	open(OUTPUT, "> $namey.gb");
+	
     }
     
-    print OUTPUT $linein;
-    
+    if ($linein !~ m/(ORGANISM|SOURCE|KEYWORDS|VERSION|\s\.\s\n)/) {
+	print OUTPUT $linein;
+    }
     if (/\/\//) {
 	close OUTPUT;
     }

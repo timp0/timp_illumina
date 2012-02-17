@@ -7,7 +7,7 @@ between <- function(num,lower,upper,strict=FALSE){
 }
 
 library(gdata)
-x <- read.xls("~/cancer_dmr/From_Peter/Supplementary_Data_4.xls",sheet=2, pattern="distToCGI", header=TRUE)
+x <- read.xls("~/thumper/Work/Notes/Genomics/Cancer DMRs/Regions/Cancer_dmr_shores.xls",sheet=2, pattern="distToCGI", header=TRUE)
 load("~/cancer_dmr/From_Rafa/otherstuff.rda")
 load("~/cancer_dmr/From_Rafa/sMM.rda")
 

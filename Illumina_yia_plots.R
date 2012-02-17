@@ -1,4 +1,12 @@
+##this is code to make a bunch of plots - at first for the young investigator assay in 2011, but now a bit expanded.
+##Includes the MDS plots that are nice
+
 ##This code is used to make thyroid plots I want
+
+setwd("~/Data/Illumina_Bead/Analysis/")
+
+load("predata.rda")
+      
 
 ##dev.off()
 library(plotrix)
@@ -15,7 +23,7 @@ library(plotrix)
 
 #top25=order(comp_mad, decreasing="T")[1:25]
 
-hector=read.csv('/Users/timp/Big_Data/Illumina_Bead/Analysis/ordered_cpgs.csv', stringsAsFactors=F)
+hector=read.csv('~/Data/Illumina_Bead/Analysis/ordered_cpgs.csv', stringsAsFactors=F)
 
 top25=hector$X[1:25]
 
@@ -74,7 +82,7 @@ dev.off()
 
 pdf("Movie/carc_mds.pdf")
 
-plot(z[carcy,1], z[carcy,2], bg=as.character(type_c?mol[norms]), pch=21, xlim=mds_range_x, ylim=mds_range_y)
+plot(z[carcy,1], z[carcy,2], bg=as.character(type_col[norms]), pch=21, xlim=mds_range_x, ylim=mds_range_y)
 
 draw.ellipse(x=nprof$xcoor, y=nprof$ycoor, a=nprof$xrad, b=nprof$yrad, lty=2, lwd=2,border=nprof$col)
 

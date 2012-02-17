@@ -1,3 +1,5 @@
+##Old Illumina sample plotting code
+
 plotsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) {
   for (j in 1:length(class_stuff$nums)) {
     data<-avg_data[(probes$Region==region),(sampy$Class==class_stuff$nums[j])]
@@ -92,6 +94,7 @@ plotClass <- function(probes,genes,avg_data,sampy,which,outname,controls=TRUE,in
     plot(0,0,ylim=c(-1,1.1),xlim=c(index[1]+900,index[final_index]-900),ylab="Methylation",xlab="",type="n",axes=F)
     box()
     axis(2, at=seq(0,1,.2))
+
     ##Plot actual samples
     plotsampreg(class_stuff[which,],probes,avg_data,sampy,not_far,i)
     ##Plot label on axis as a tick on the bottom

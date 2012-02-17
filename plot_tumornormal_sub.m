@@ -1,4 +1,4 @@
-function [] = plot_tumornormal_sub1(data,subset,opty,modif)
+function [] = plot_tumornormal_sub2(data,subset,opty,modif)
 %Plot the tumor normal pairs
 
 for i=1:5
@@ -30,7 +30,7 @@ for j=1:length(sample_names)
 end
 %Make the clustergram
 cg=clustergram(sample_tn, 'ColumnLabels', sample_names, 'RowLabels', ...
-    data.genes(subset),'Linkage', 'ward', 'Dendrogram', [10 50], 'Standardize', 2,'cluster',opty.cluster);
+    data.genes.label(subset),'Linkage', 'ward', 'Dendrogram', [10 50], 'Standardize', 2,'cluster',opty.cluster);
 set(cg, 'ColumnLabelsColor', tn_colors);
 clustergram_plot2(['tn_' modif '_' broken{1}], opty.huge);
 
