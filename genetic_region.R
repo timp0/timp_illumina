@@ -51,8 +51,8 @@ plotcpgdens <- function(chromy,start,end){
   SPAN=400/diff(range(x))
   d = loess(y~x,span=SPAN,degree=1)
   
-  plot(x,d$fitted,type="l",ylim=c(0,0.2),xlab="Location",
-       ylab="CpG density",xlim=c(start,end))
+  plot(x,d$fitted,type="l",ylim=c(0,0.2),xlab="",
+       ylab="CpG density",xlim=c(start,end),xaxt="n")
   
   rug(cpgs)
 }
@@ -67,15 +67,20 @@ plotcontrols <- function(avg_data,sampy,not_far,region,start,end) {
   plot(0,0,ylim=c(0,1),xlim=c(start,end),"axes"=FALSE, type="n",xlab="",ylab="")
   axis(side=4)
   for (j in 1:nrow(not_far)) {
-    ##Smooth.spline must have differences after 6 sig figs - this doesn't work with choromosomal coordinates on this scale unless we subtract the 0 index
+    ##Plot control points
     loc=not_far$Start_loc[j]-50+cntrl_info$Other_Note-start
     points(loc+start,cntrl_data[j,],col="green")
-    d = smooth.spline((as.numeric(cntrl_data[j,]))~(loc))
+    ##Linear Fit
+    d=lm((as.numeric(cntrl_data[j,]))~loc)
     ##plot on the same scale
-    lines(d$x+start,d$y,col="green")		  
+    x=unique(loc)
+    y=d$coefficients[[1]]+d$coefficients[[2]]*x
+    lines(x+start,y,col="green")
+    ##Plot smoothed curve
+    lines(lowess(loc+start,as.numeric(cntrl_data[j,])),col="red",lty=2)
   } 
   ##Plot label on axis as a tick on the top
-  axis(side=3,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
+  axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
 }
 
 plotsamples <- function(class_stuff,avg_data,sampy,not_far,region,start) {
@@ -85,14 +90,12 @@ plotsamples <- function(class_stuff,avg_data,sampy,not_far,region,start) {
     ##cat(class_stuff$nums[j],"\n")
     num_samp=ncol(data)
     for (k in 1:nrow(not_far)) {
-      loc=jitter(rep(not_far$Start_loc[k]-start,num_samp),amount=50)
-      
+      loc=jitter(rep(not_far$Start_loc[k]-start,num_samp),amount=50)     
       points(loc+start,data[k,],col=class_stuff$coloring[j])
-
     }
   }
 
-  legend("topright",class_stuff$nam,col=class_stuff$coloring,lty=1,lwd=1)
+  legend("topright",class_stuff$nam,col=class_stuff$coloring,pch=1)
   
 }
 
@@ -102,7 +105,7 @@ plotgenes <- function(genes,chromy, start, end){
   in_genes=genes[( (genes$chrom==chromy)& ( ((genes$txStart>start)&(genes$txStart<end))|((genes$txEnd>start)&(genes$txEnd<end)))),]    
   ##Plot Genes
   plot(0,0,ylim=c(-1.5,1.5),xlim=c(start,end),yaxt="n",ylab="Genes",
-       xlab="Location")
+       xlab="")
   ##Label Y-axis
   axis(2,c(-1,1),c("-","+"),tick=FALSE,las=1)
   ##Add dotted line
@@ -133,13 +136,13 @@ plotgenes <- function(genes,chromy, start, end){
 }
 
 
-plotTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,which,outname) {
+plotfullTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,outname) {
   ##
   ##Start Plot
   pdf(outname,width=11,height=8)
   par(mfrow=c(3,1))
-  layout(matrix(1:3,ncol=1),heights=c(0.5,0.3,0.2))
-  par(mar=c(3,2.5,2.5,2.5),mgp=c(1.5,.5,0)) 
+  layout(rbind(1:5,rep(6,5),rep(7,5)),heights=c(0.5,0.3,0.2))
+  par(mar=c(2,1,0,1),mgp=c(1.5,.5,0),oma=c(0,1,2,1)) 
   
   
   ##Loop through all regions
@@ -152,16 +155,30 @@ plotTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,whic
     chromy <- paste("chr",not_far$Chromosome[1],sep="")
     index=(min(not_far$Start_loc)-1000):(max(not_far$Finish_loc)+1000)
     final_index=length(index)
+
+
+    for (k in 1:5){
+      ##Init sample plot
+      if (k==1){
+        plot(0,0,ylim=c(0,1.1),xlim=c(index[900],index[final_index-900]),ylab="Methylation",xlab="",type="n",axes=F)
+        box()
+        axis(2, at=seq(0,1,.2))
+      } else {
+        plot(0,0,ylim=c(0,1.1),xlim=c(index[900],index[final_index-900]),ylab="",xlab="",type="n",xaxt="n",yaxt="n")
+      }
+      ##Plot actual samples
+      plotsamples(class_stuff[(k*2):(k*2+1),],avg_data,sampy,not_far,i,index[1])
+      ##Plot label on axis as a tick on the bottom
+      axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
+
+    }
     
-    ##Init sample plot
-    plot(0,0,ylim=c(0,1),xlim=c(index[1],index[final_index]),ylab="Data",xlab="Location", type="n")
-    ##Plot actual samples
-    plotsamples(class_stuff[which,],avg_data,sampy,not_far,i,index[1])
     ##Plot title to graph
-    mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2)
-    
+    mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
+
     ##Plot CpGDensity
     plotcpgdens(chromy,index[1],index[final_index])
+
     ##Stay on same plot
     par(new=T)
     ##Plot Controls
@@ -206,8 +223,8 @@ class_stuff=data.frame(nums=c(1,2,3,4,5,6,7,8,9,10,11),
 
 
 
-plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(2:3),"breast_R.pdf")
-plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(4:5),"colon_R.pdf")
-plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(6:7),"lung_R.pdf")
-plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(8:9),"ovary_R.pdf")
-plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(10:11),"wilms_R.pdf")
+plotfullTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,"Movie/b.pdf")
+#plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(4:5),"colon_R.pdf")
+#plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(6:7),"lung_R.pdf")
+#plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(8:9),"ovary_R.pdf")
+#plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(10:11),"wilms_R.pdf")

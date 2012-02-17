@@ -9,10 +9,6 @@
 use Bio::Perl;
 use Bio::SeqFeature::Generic;
 use Bio::SeqIO;
-use GD;
-use GD::Graph;
-use GD::Graph::area;
-use GD::Text;
 use Bio::EnsEMBL::Registry;
 use warnings;
 
@@ -21,7 +17,7 @@ $span=500;
 
 
 $i=1;
-
+$k=0;
 #Take input from first line
 while (<>) {
     if (/chr(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+)/)
@@ -106,8 +102,9 @@ while (<>) {
 	print "$id_name has CpGs at: ";
 	$j=0;
 	while ($sequency =~ m/CG/g) {
-	    $loco = pos($sequency)+$consist;
-	    print "chr$chromey $loco,";
+	    #Off by 3 - one for zero correction - two for the two bp
+	    $loco = pos($sequency)+$consist-3;
+	    print "chr$chromey $loco, ";
 	    $j++;
 	}
 	print "for a total of $j CpGs.\n";
@@ -121,10 +118,12 @@ while (<>) {
 	#print "$id_name has $cpgs CpGs.\n";
 	
 	$i++;
-
+	$k=$k+$j;
 
     }
 }
+
+print "For a total of $k CpGs.\n";
 
 
 
