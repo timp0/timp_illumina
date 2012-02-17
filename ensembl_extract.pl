@@ -20,7 +20,7 @@ $q=1;
 $k=0;
 
 
-#Take input from first line
+#Take input from first line - header - then discard
 $garb=<>;
 $garb=0;
 #print $garb,"\n";
@@ -44,10 +44,17 @@ while (<>) {
     $CGI = $fields[8];
     $CGI_dist = $fields[9];
     #$index = $11;
+    $p=0;
 
+    #Read in all the probes - starting at 11th field 
     for ($i=0; $i<(($#fields-10)/2); $i++) {
+	if ($fields[2*$i+11]=~ /NA/) {
+	    #print "$id_name $i is NA\n";
+	}
+	else {
 	$probes[$i]=$fields[2*$i+11];
 	$deltam[$i]=$fields[2*$i+12];
+	$p++; }
 	#print "$i,";
     }
     #print "$id_name $probes[0] \n";
@@ -83,21 +90,27 @@ while (<>) {
     #Define annotation for CHARM Region - this was the original start and end given in the line
     $feat = new Bio::SeqFeature::Generic(-start => $span,
 					 -end => ($sender->length)-$span,
-					 -primary_tag => 'CHARM_Region',
+					 -primary_tag => 'CHARM_Region_$i',
 					 -tag => {note => 'Geneious name: CHARM Region'});
     $sender->add_SeqFeature($feat);
     
     
-#Probes are 50bp long - Define Annotation for Probe(s)
-    
 
 
+     #Probes are 50bp long - Define Annotation for Probe(s)
+    #Iterate through all the probes 
     for ($i=0; $i<=($#probes); $i++) {
 	$feat = new Bio::SeqFeature::Generic(-start => ($probes[$i]-$begin),
 					     -end => ($probes[$i]-$begin+50),
-					     -primary_tag => "CHARM_Probe_$i",
-					     -tag => {DeltaM => $deltam[$i], note => 'Geneious name: CHARM Probe #$i'});
+					     -primary_tag => "CHARM_Probe",
+					     -tag => {DeltaM => $deltam[$i], note => "Geneious name: CHARM Probe #$i"});
 	$sender->add_SeqFeature($feat);
+
+
+	$il_start=$probes[$i];
+	$il_end=$probes[$i]+50;
+
+
 
 
         #Extract sequence from most consistantly different probe
@@ -106,10 +119,8 @@ while (<>) {
 	
 	
 	
-	$il_start=$probes[$i];
-	$il_end=$probes[$i]+50;
 	
-	print "$CGI,$chromey,$il_start,$il_end,36.1,Homo sapiens,$id_name.$i\n";
+
 	
 	$j=0;
 	while ($sequency =~ m/CG/g) {
@@ -120,6 +131,13 @@ while (<>) {
 	    #print "$chromey,$loco,$second,$id_name.$j\n";
 	    $j++;
 	}
+	
+
+	#Print for illumina only those probes which have CpGs and which are from shores
+	if (($j>0)&&($CGI=~/Shore/)) {       
+	print "$CGI,$chromey,$il_start,$il_end,36.1,Homo sapiens,$id_name.$i\n";
+	}
+
 	$k=$k+$j;
 	 
 	 }
@@ -141,7 +159,7 @@ while (<>) {
 	 
 	 
 	 
-	 
+	 #Write out annoateted genbank file of the CHARM region
 	 $io = Bio::SeqIO->new(-format => "genbank", file => ">$id_name.gb");
 	 $io->write_seq($sender);
 	 
@@ -149,8 +167,10 @@ while (<>) {
 	 
 	 $q++;
 	 
-	 
-       
+
+    #Clear the array
+    $#probes=-1;
+    $#deltam=-1;
 }
 
 print "For a total of $k CpGs.\n";
