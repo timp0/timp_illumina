@@ -11,7 +11,7 @@ sub tumnorm {
   if ($other_id =~ m/T/) {
     $other_id=~s/T//;
     $class=$j*2;
-    $note=-1;
+    $note=1;
   }
   if ($other_id =~ m/N/) {
     $other_id=~s/N//;
@@ -47,7 +47,7 @@ while (<CONVERT>) {
   @convert_fields = split /,/;
   if (($convert_fields[3]!~$near_chrom)|(abs($convert_fields[4]-$near_what)>10000)) {
     $k++;
-    print "$convert_fields[0],$convert_fields[10],$near_what, $near_chrom, $k\n";
+    #print "$convert_fields[0],$convert_fields[10],$near_what, $near_chrom, $k\n";
     $near_what=$convert_fields[4];
     $near_chrom=$convert_fields[3];
   }
@@ -92,8 +92,31 @@ for ($i=15; $i<$header_size; $i=$i+5) {
   #10 - Wilms Tumor
   #11 - Wilms Normal
   #12 - Cross Control
+  #13 - Other
+  #4 - Adenoma - Tumor *Other_ID=-2
+  #2 - DCIS (Breast) Tumor *Other_ID=-2
+  #3 - DCIS (Breast) Normal *Other_ID=-2
+  #3,4 - ColonSequencing Samp *Other_ID=-3
+  #20 - Thyroid Tumor
+  #21 - Thyroid Normal
+  #ADN - OtherID=1
+  #FA - OtherID=2
+  #FC - OtherID=3
+  #FVPTC OtherID=4
+  #HA OtherID=5
+  #HC OtherID=6
+  #PTC OtherID=7
+  #22 - Pancreas Tumor
+  #23 - Pancreas Normal
+  #IPMN Other_ID=1
+  #NET Other_ID=2
+  #LCC Other_ID=3
   #And set the sample number and % methylation
-
+  
+  $class=0;
+  $note=-1;
+  $other_id=-1;
+  
   @sample_break = split(/_/,$sample_name);
   if ($sample_name =~ m/CIDR/) {
     $class=1;
@@ -120,9 +143,22 @@ for ($i=15; $i<$header_size; $i=$i+5) {
     $j=1;
     &tumnorm;
   }
+  if ($sample_name =~ m/DCIS/) {
+    $j=1;
+    &tumnorm;
+    $note=2*$note;
+  }
   if ($sample_name =~ m/Colon/) {
     $j=2;
     &tumnorm;
+    if ($sample_name =~ m/ColonSeq/) {
+      $note=3*$note;
+    }
+  }
+  if ($sample_name =~ m/Adenoma/) {
+    $j=2;
+    &tumnorm;
+    $note=2*$note;
   }
   if ($sample_name =~ m/Lung/) {
     $j=3;
@@ -136,9 +172,52 @@ for ($i=15; $i<$header_size; $i=$i+5) {
     $j=5;
     &tumnorm;
   }
+  if ($sample_name =~ m/Thy/) {
+    $j=10;
+    &tumnorm;
+
+    if ($sample_name =~ m/ThyADN/) {
+      $note=1*$note;
+    }
+    if ($sample_name =~ m/ThyFA/) {
+      $note=2*$note;
+    }
+    if ($sample_name =~ m/ThyFC/) {
+      $note=3*$note;
+    }
+    if ($sample_name =~ m/ThyFVPTC/) {
+      $note=4*$note;
+    }
+    if ($sample_name =~ m/ThyHA/) {
+      $note=5*$note;
+    }
+    if ($sample_name =~ m/ThyHC/) {
+      $note=6*$note;
+    }
+    if ($sample_name =~ m/ThyPTC/) {
+      $note=7*$note;
+    }
+  }
+  if ($sample_name =~ m/Pan/) {
+    print "$sample_name";
+    $j=11;
+    &tumnorm;
+    if ($sample_name =~ m/IPMN/) {
+      $note=1*$note;
+    }
+    if ($sample_name =~ m/NET/) {
+      $note=2*$note;
+    }
+    if ($sample_name =~ m/LCC/) {
+      $note=3*$note;
+    }
+    print ": $note\n";
+  }
+    
 
 print SAMPLE "$sample_name,$class,$other_id,$note\n";
 print DATA $sample_name,"_AVG,",$sample_name,"_CY3,",$sample_name,"_CY5,",$sample_name,"_NUMBEADS,",$sample_name,"_STDERR,";
+
 
 }
 print DATA "\n";

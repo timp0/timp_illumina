@@ -23,12 +23,16 @@ $span=500;
 
 #Take input from first argument
 while (<>) {
-    if (/(\S+),chr(\S+),(\S+),(\S+)/)
+    if (/chr(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+)/)
     {
-	$id_name = $1;
-	$chromey = $2;
-	$begin = $3-$span;
-	$finish = $4+$span;
+	$id_name = $6;
+	$chromey = $1;
+	$begin = $2-$span;
+	$finish = $3+$span;
+	$delta_m = $4;
+	$fdr = $5;
+	$consist = $7;
+	$largest = $8;
 	
 	
 	
@@ -55,16 +59,32 @@ while (<>) {
 	
 	$sender = Bio::Seq->new(-seq => $slice->seq,
 				-display_id => $id_name,
-				-desc => "Chromosome $chromey $begin-$finish");
+				-desc => "Chromosome $chromey $begin-$finish DeltaM: $delta_m FDR: $fdr");
 	
 	$feat = new Bio::SeqFeature::Generic(-start => $span,
 					     -end => ($sender->length)-$span,
-					     -primary_tag => 'misc_difference',
-					     -tag => {note => 'Geneious name: CHARM Probe'});
+					     -primary_tag => 'CHARM_Region',
+					     -tag => {note => 'Geneious name: CHARM Region'});
+
+	$sender->add_SeqFeature($feat);
+
+#Probes are 50bp long
+	$feat = new Bio::SeqFeature::Generic(-start => ($consist-$begin),
+					     -end => ($consist-$begin+50),
+					     -primary_tag => 'CHARM_TProbe',
+					     -tag => {note => 'Geneious name: CHARM Consistant Probe'});
+
+	$sender->add_SeqFeature($feat);
+
+	$feat = new Bio::SeqFeature::Generic(-start => ($largest-$begin),
+					     -end => ($largest-$begin+50),
+					     -primary_tag => 'CHARM_DProbe',
+					     -tag => {note => 'Geneious name: CHARM Largest Probe'});
+
 	
 	$sender->add_SeqFeature($feat);
 	
-	$sequency = $sender->subseq($span,($sender->length)-$span);
+	$sequency = $sender->subseq(($consist-$begin),($consist-$begin+50));
 	
 	#print $sequency, "\n";
 

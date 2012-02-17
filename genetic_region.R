@@ -12,7 +12,7 @@ plotucsc <-function(ucsc_isl,chromy,start,end){
       isl_start=in_ucscisl$chromStart[j]
       isl_end=in_ucscisl$chromEnd[j]
       
-      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0,0,0.15,0.15),density=10,col="blue",angle=45)
+      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0.05,0.05,0.1,0.1),density=10,col="blue",angle=45)
     }
   }
 }
@@ -28,7 +28,7 @@ plothmm <-function(hmm_isl, chromy, start, end){
       isl_start=in_hmmisl$start[j]
       isl_end=in_hmmisl$end[j]
       
-      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0,0,0.15,0.15),density=10,col="red",angle=-45)
+      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0,0,0.05,0.05),density=10,col="red",angle=-45)
     }
   }
 }
@@ -105,8 +105,10 @@ ucsc_isl<-read.delim("ucsc_cpgisl.txt",stringsAsFactors=FALSE)
 hmm_isl<-read.csv("hmm_isl1.txt",stringsAsFactors=FALSE)  
 ##Load RefSeq Gene file
 genes<-read.delim("ref_genes.txt",stringsAsFactors=FALSE)
-
+##Sort the probe info based on chromosome
 sorted<-probes[order(probes$Chromosome,probes$Start_loc) ,]
+
+
 
 ##Start Plot
 

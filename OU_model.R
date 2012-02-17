@@ -76,12 +76,14 @@ ou_sim2 <- function (nsimul=10, m0=0.5, mu=0.5, on_theta=1, off_theta=0,on_sigma
       y[i]=max(c(0,y[i]))
       y[i]=min(c(1,y[i]))
     }
-    
+    ##Assign the results of iteration to one of the array
     runs[,j]=y
     ##Plot
     lines(t, y, type="l", lwd=1, col="red")
   }
 
+
+  ##Mark vertical lines at cancer genesis event and potential location of adenoma time point?
   abline(v=0, lty=2, col="green", lwd=1)
   abline(v=5, lty=2, col="blue", lwd=1)
   
@@ -92,32 +94,8 @@ ou_sim2 <- function (nsimul=10, m0=0.5, mu=0.5, on_theta=1, off_theta=0,on_sigma
 
 }
 
-
-
-sense_test <- function() {
-  
-  sensetheta=seq(from=0, to=1, by=0.05)
-  sensesigma=seq(from=0, to=1, by=0.05)
-  
-
-  for (i in sensetheta) {
-    for (j in sensesigma) {
-
-      
-      z=mult_sim1(theta=i, sigma=j, mu=1,nsimul=1e2,namey=paste(i, j, "trace.png", sep="_"))
-      d=density(z[201,], from=0, to=1)
-      png(paste("Simul/",paste(i,j,"dense.png",sep="_"), sep=""))
-      plot(d)
-      dev.off()
-      
-          
-      
-    }
-  }
-}
-
 ou_bar<-function(norms, nsimul=10, off_theta=0, namey="progbar", on_sigma=0.05, off_sigma=0.05, on_theta=1) {
-
+#Make boxplot of results at different time points - for real data comparison
   numprobes=length(norms)
   
   normy=array(numeric, dim=c(nsimul,numprobes))
@@ -135,16 +113,22 @@ ou_bar<-function(norms, nsimul=10, off_theta=0, namey="progbar", on_sigma=0.05, 
   }
 
   pdf(paste("Simul/", namey, ".pdf", sep=""), width=8, height=8)
-
+  ##Incomplete hereVVVV
   box
 }
   
 ou_density<- function(mu=0.5, off_theta=0, namey="progress", on_sigma=0.05, off_sigma=0.05, on_theta=1) {
+##Make density plot of results at different time points
 
-  
-  res=ou_sim2(mu=mu, off_theta=off_theta, nsimul=10, m0=mu, on_sigma=on_sigma, off_sigma=off_sigma, on_theta=on_theta,namey=paste(namey, "trace",sep="_"), draw=T)
-  
-  res=ou_sim2(mu=mu, m0=mu, nsimul=100, off_theta=off_theta, on_sigma=on_sigma, tfinal=30, off_sigma=off_sigma, on_theta=on_theta,namey="p")
+  ##Do only 10 simulations to make the traces - otherwise its too dense and crowded.
+  res=ou_sim2(mu=mu, off_theta=off_theta, nsimul=10, m0=mu,
+    on_sigma=on_sigma, off_sigma=off_sigma, on_theta=on_theta,
+    namey=paste(namey, "trace",sep="_"), draw=T)
+
+  ##Do 100 simulations to make the density plots
+  res=ou_sim2(mu=mu, m0=mu, nsimul=100,
+    off_theta=off_theta, on_sigma=on_sigma, on_theta=on_theta,
+    tfinal=30,namey="p")
 
   ##Normal values
   normy=res$simul[400,]
