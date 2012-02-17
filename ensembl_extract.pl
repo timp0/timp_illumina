@@ -16,7 +16,7 @@ use warnings;
 $span=500;
 
 
-$i=1;
+$q=1;
 $k=0;
 #Take input from first line
 while (<>) {
@@ -34,7 +34,7 @@ while (<>) {
 	$TSS_dist = $8;
 	$CGI = $9;
 	$CGI_dist = $10;
-	$index = $11;
+	#$index = $11;
 
 	$probe1 = $12;
 	$deltam1 = $13;
@@ -68,7 +68,7 @@ while (<>) {
 	#create new sequence variable from the slice
 	$sender = Bio::Seq->new(-seq => $slice->seq,
 				-display_id => $id_name,
-				-accession_number => sprintf("%03d",$i),
+				-accession_number => sprintf("%03d",$q),
 				-desc => "$CGI:$CGI_dist Chromosome $chromey $begin-$finish DeltaM: $delta_m FDR: $fdr $relation to $id_name, $TSS_dist bp");
 	
 
@@ -83,43 +83,35 @@ while (<>) {
 #Probes are 50bp long - Define Annotation for Probe(s)
 	$feat = new Bio::SeqFeature::Generic(-start => ($probe1-$begin),
 					     -end => ($probe1-$begin+50),
-					     -primary_tag => 'CHARM Probe 1',
+					     -primary_tag => 'CHARM_Probe_1',
 					     -tag => {DeltaM => $deltam1, note => 'Geneious name: CHARM Probe #1'});
 	$sender->add_SeqFeature($feat);
 
 	$feat = new Bio::SeqFeature::Generic(-start => ($probe2-$begin),
 					     -end => ($probe2-$begin+50),
-					     -primary_tag => 'CHARM Probe ',
+					     -primary_tag => 'CHARM_Probe_2',
 					     -tag => {DeltaM => $deltam2, note => 'Geneious name: CHARM Probe #2'});
 	$sender->add_SeqFeature($feat);
 
 	$feat = new Bio::SeqFeature::Generic(-start => ($probe3-$begin),
 					     -end => ($probe3-$begin+50),
-					     -primary_tag => 'CHARM Probe 3',
+					     -primary_tag => 'CHARM_Probe_3',
 					     -tag => {DeltaM => $deltam3, note => 'Geneious name: CHARM Probe #3'});
 	$sender->add_SeqFeature($feat);
 
 	$feat = new Bio::SeqFeature::Generic(-start => ($probe4-$begin),
 					     -end => ($probe4-$begin+50),
-					     -primary_tag => 'CHARM Probe 4',
+					     -primary_tag => 'CHARM_Probe_4',
 					     -tag => {DeltaM => $deltam4, note => 'Geneious name: CHARM Probe #4'});
 	$sender->add_SeqFeature($feat);
 
 	$feat = new Bio::SeqFeature::Generic(-start => ($probe5-$begin),
 					     -end => ($probe5-$begin+50),
-					     -primary_tag => 'CHARM Probe 5',
+					     -primary_tag => 'CHARM_Probe_5',
 					     -tag => {DeltaM => $deltam5, note => 'Geneious name: CHARM Probe #5'});
 	$sender->add_SeqFeature($feat);
 
 
-
-
-	$feat = new Bio::SeqFeature::Generic(-start => ($probe2-$begin),
-					     -end => ($probe2-$begin+50),
-					     -primary_tag => 'CHARM Probe 2',
-					     -tag => {note => 'Geneious name: CHARM Probe #2'});
-	$sender->add_SeqFeature($feat);
-	
 		
 	#Find any genes in the slice - mark them with annotations
 	$genes = $slice->get_all_Genes();
@@ -146,7 +138,7 @@ while (<>) {
 	$j=0;
 	for ($i=1; $i<6; $i++) {
 	    if ($i==1) {
-	    	$curprobe = $probe1;
+	    	$curprobe = $probe1;      
 	    }
 	    if ($i==2) {
 		$curprobe = $probe2;
@@ -160,15 +152,20 @@ while (<>) {
 	    if ($i==5) {
 		$curprobe = $probe5;
 	    }
+	    
+	    $il_start=$curprobe;
+	    $il_end=$curprobe+50;
+	    
+	    print "$CGI,$chromey,$il_start,$il_end,36.1,Homo sapiens,$id_name.$i\n";
 
 	    $sequency = $sender->subseq(($curprobe-$begin),($curprobe-$begin+50));
-		
+	    
 	    while ($sequency =~ m/CG/g) {
 		#Off by 3 - one for zero correction - two for the two bp
 		#Add one on either side - get 4 bp with CG in the middle
-		$loco = pos($sequency)+$curprobe-3-1;
-		$second = $loco+1+2;
-		print "$chromey,$loco,$second,$id_name.$j\n";
+		#$loco = pos($sequency)+$curprobe-3-1;
+		#$second = $loco+1+2;
+		#print "$chromey,$loco,$second,$id_name.$j\n";
 		$j++;
 	    }
 	$k=$k+$j;
@@ -182,7 +179,7 @@ while (<>) {
 	
 	#print "$id_name has $cpgs CpGs.\n";
 	
-	$i++;
+	$q++;
 	
 
     }
