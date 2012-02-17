@@ -50,8 +50,6 @@ while (<>) {
 	
 	
 	
-	print $slice->seq(), "\n";
-	
 	
 	
 	
@@ -66,18 +64,19 @@ while (<>) {
 	
 	$sender->add_SeqFeature($feat);
 	
+	$sequency = $sender->subseq($feat->start,$feat->end);
+	
+	#print $sequency, "\n";
+
+	my $cpgs = ($sequency =~ s/CG/CG/g);
+
+
 	$genes = $slice->get_all_Genes();
 	
 	
 	
 	
 	while ( $gene = shift @{$genes} ) {
-	    print $gene->stable_id(), "\n";
-	    print $gene->start(), "\n";
-	    print $gene->end(), "\n";
-	    print $gene->external_name, "\n";
-	    print $gene->strand(), "\n";
-	    
 	    $feat = new Bio::SeqFeature::Generic(-start => $gene->start,
 						 -end => $gene->end,
 						 -strand => $gene->strand,
@@ -91,6 +90,8 @@ while (<>) {
 	$io = Bio::SeqIO->new(-format => "genbank", file => ">$id_name.gb");
 	$io->write_seq($sender);
 	
+	print "$id_name has $cpgs CpGs.\n";
+
     }
 }
 

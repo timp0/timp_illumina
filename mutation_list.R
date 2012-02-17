@@ -23,4 +23,11 @@ getcoord <- function(UCSC)  {
   
 
 }
+
+refcoord <- function(refgene)  {
+#Using Refseq list get coordinates of transcripts
+
+ 
   
+
+}

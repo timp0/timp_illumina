@@ -9,6 +9,8 @@ library(BSgenome.Hsapiens.UCSC.hg18)
 #Load CSV file
 probes<-read.csv("New_norm_mat_targer_ucscisl_hmmisl.csv",stringsAsFactors=FALSE)
 genes<-read.delim("ref_genes.txt",stringsAsFactors=FALSE)
+ucsc_isl<-read.delim("ucsc_cpgisl.txt",stringsAsFactors=FALSE)
+hmm_isl<-read.csv("hmm_isl1.txt",stringsAsFactors=FALSE)
 sorted<-probes[order(probes$Chromosome,probes$Start_loc) ,]
 
 #Start Plot
@@ -21,8 +23,8 @@ i <- 1
 while (i <= nrow(sorted)) {
   #Find probes which have the same start name(they will be the same)
   par(mfrow=c(2,1))
-  cat(i);
-  cat(" running.\n")
+  #cat(i);
+  #cat(" running.\n")
   not_far<-sorted[((sorted$Chromosome[i]==sorted$Chromosome)&(abs(sorted$Start_loc[i]-sorted$Start_loc)<10000)),]
   num_close<-nrow(not_far)
   
@@ -49,12 +51,46 @@ while (i <= nrow(sorted)) {
 
   plot(x,d$fitted,type="l",ylim=c(0,0.15),xlab="Location",
            ylab="CpG density",xlim=c(index[1],index[final_index]))
-  for(j in c(1:num_close)) {
-    points(not_far$Start_loc[j], .07)
-  }
+  #Plot actual probe locations
+
+  points(not_far$Start_loc, rep(0.07, num_close))
+  text(not_far$Start_loc,rep(0.07,num_close),labels=not_far$Probe_ID, cex=0.5, pos=1)
+         
+
   rug(cpgs)
 
+  #Check for UCSC Island
+  in_ucscisl=ucsc_isl[( (ucsc_isl$X.chrom==chromy)& ( ((ucsc_isl$chromStart>index[1])&(ucsc_isl$chromStart<index[final_index]))|((ucsc_isl$chromEnd>index[1])&(ucsc_isl$chromEnd<index[final_index])))),]
 
+  #Plot UCSC Island
+  if (nrow(in_ucscisl)>0) {
+    for(j in 1:nrow(in_ucscisl)){
+      #cat("Island in ", i, "\n")
+      isl_start=in_ucscisl$chromStart[j]
+      isl_end=in_ucscisl$chromEnd[j]
+
+      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0,0,0.15,0.15),density=10,col="blue",angle=45)
+    }
+  }
+  
+  #Check for HMM Island
+  in_hmmisl=hmm_isl[( (hmm_isl$chr==chromy)& ( ((hmm_isl$start>index[1])&(hmm_isl$start<index[final_index]))|((hmm_isl$end>index[1])&(hmm_isl$end<index[final_index])))),]
+
+  #plot HMM Island
+  if (nrow(in_hmmisl)>0) {
+    for(j in 1:nrow(in_hmmisl)){
+      #cat("Island in ", i, "\n")
+      isl_start=in_hmmisl$start[j]
+      isl_end=in_hmmisl$end[j]
+
+      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0,0,0.15,0.15),density=10,col="red",angle=-45)
+    }
+  }
+
+  mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2)
+  legend("topright",c("UCSC Islands", "HMM Islands"),col=c("blue", "red"),lty=1,lwd=2)
+  
+  
   #Find Genes in Region
   in_genes=genes[( (genes$chrom==chromy)& ( ((genes$txStart>index[1])&(genes$txStart<index[final_index]))|((genes$txEnd>index[1])&(genes$txEnd<index[final_index])))),]
   
@@ -91,8 +127,6 @@ while (i <= nrow(sorted)) {
       ##turns into 3 (above)
     }
   }
-  mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),
-        side=3,cex=1.5,outer=TRUE)
 
 
 

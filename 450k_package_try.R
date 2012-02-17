@@ -1,71 +1,51 @@
 ##Put us in the right dir for output
-setwd("~/Data/Infinium/080111_analysis/")
+setwd("~/Data/Infinium/100411_analysis/")
 
 ##Experimental file location
-expdatapath="/thumper2/feinbergLab/core/iScan/Experiments/"
+expdatapath="/thumper2/feinbergLab/core/iScan/Experiments"
 
 ##Current 450k package name
-require(minfi)
+##Kasper says ignore warnings about "contains no R code"
+##This is the local(expanded) version of minfi
+library(minfiLocal)
+
 ##This will list commands
-ls("package:minfi") 
+##ls("package:minfi")
+
+
+
 
 ##Needs this data object apparently?  Let's test!!
 ##data(IlluminaHumanMethylation450kmanifest)
 
+##From Chris - array annotation
+#---Load the array annotation files--#
+int <- read.delim("~/Data/Infinium/100411_analysis/Probe_intersect_SNP_20111006",
+                  header=FALSE, stringsAsFactors=FALSE) #probe coordinates intersecting All132SNP table
+anno <-  read.table("~/Data/Infinium/100411_analysis/450kanno.txt",header=TRUE, stringsAsFactors=FALSE) #450k annotation
+
+rownames(anno)=anno$Name  #-add annotation info
+colnames(int)=c("chr", "start", "end", "Name") #header to intersectio file
+
 
 ##Read in plates
-plate.id=c("02", "05", "07","08", "09", "10")
+plates=read.450k.sheet(expdatapath, "IL00[25789]_v2.csv$", recursive=T)
+plates=rbind(plates, read.450k.sheet(expdatapath, "IL010_v2.csv$", recursive=T))
 
-targy=NULL
+##Read in data
+RGset=read.450k.exp(base=expdatapath, targets=plates)
 
-rgdata=list()
-targets=list()
-preraw=list()
-prenorm=list()
+##Get out just pancreas samples and mets
 
+pancreas.samp=pData(RGset)$Tissue=="pancreas" ##Alternatively pData(RGset) gets out the plates variable again
+pan.met.samp=grepl(pattern="pancreas",pData(RGset)$Notes)&pData(RGset)$Phenotype=="metastasis"
 
-for (i in 1:length(plate.id)) {
-  platename=paste("IL0", plate.id[i], sep="")
+pancreas.data=RGset[,(pancreas.samp|pan.met.samp)]
 
-  ## Read in plate - data is in this long path
-  basepath=paste(expdatapath, platename, sep="")
-  
-  ## Read in sample IDs
-  ## For this you need rbind
-  ##targets[[i]]=read.csv(file.path(basepath, paste(platename, "_v2.csv", sep="")), stringsAsFactors=F, skip=5)
+MSet=preprocessRaw(pancreas.data)
 
-  targy=rbind(targy,(read.csv(file.path(basepath, paste(platename, "_v2.csv", sep="")), stringsAsFactors=F, skip=5)))
-  ##targy=rbind(targy, targets[[i]])
-  ##load data
-  ##rgdata[[i]]=read.450k.exp(basedir=basepath, targets[[i]])
+pdf("Plots/pancreas1.pdf")
 
-  ##Preprocess Raw
-  ##preraw[[i]]=preprocessRaw(rgdata[[i]])
+mdsPlot(MSet, numPositions=1000, sampGroups=pData(pancreas.data)$Phenotype)
 
-  ##Preprocess Normalized(Background subtracted
-  ##prenorm[[i]]=preprocessIllumina(rgdata[[i]], bg.correct=T, normalize="controls", reference=8)
-}
-
-
-##Get out just dilution samples
-
-##nin.dil=nine.targets$Sample_Group %in% "Cells_DNA_test"
-##ten.dil=ten.targets$Sample_Group %in% "Cells_DNA_test"
-
-##Ok - on nine, 36, is 10^5, 75 is 10^4, 37 is 500ng, 76 is 250ng
-##on ten, 10-^3 is 16, 10^2 is 53, 10^1 is 87
-##on ten 100ng is 17, 50ng is 54, 20ng is 88
-
-##Conc
-##conc=cbind(Beta(nine.ISet.raw[,c(37, 76)], type="Illumina"), Beta(ten.ISet.raw[,c(17, 54, 88)]))
-
-##pdf("concentration.pdf")
-
-##smoothScatter(conc[,5], conc[,1])
-##smoothScatter(conc[,4], conc[,1])
-##smoothScatter(conc[,3], conc[,1])
-##smoothScatter(conc[,2], conc[,1])
-
-##dev.off()                               
-
-
+dev.off()                               

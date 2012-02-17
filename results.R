@@ -1,6 +1,8 @@
 #This is just results.R, but I've customized it for winston's purpose.
 #So this is not a file for general use.
 
+nummy <- 20
+
 #May have to use ~ririzarr/bin/R-2.5.0 if BSgenome species genome fails.
 #If so, need to use the contemporaneous versions of all the packages:
 .libPaths("/home/bst/student/bcarvalh/bin/R-2.5.0/library")
@@ -10,7 +12,7 @@
 inpath  <- "~wtimp/cancer_dmr/From_Rafa"
   #path to where your sMM.rda, M.rda, otherstuff.rda, 
   #and object.rda charm objects are, which must exist.
-outpath <- "~/cancer_dmr/Analysis"
+outpath <- "~/thumper/Work/Notes/Genomics/Cancer DMRs/Regions"
   #path to where you want your output files to go.
 numplots <- 300 #number of plots you want. e.g., if numplots=100, then the 
                 #top 100 regions will be plotted in the plot.pdf file.
@@ -36,7 +38,7 @@ if(!exists("M")){
   M=M*median(tmpmed)
 }
 #load("object.rda") #need NAMES and object
-obj <- read.csv("~/cancer_dmr/Analysis/Top5_try.csv")
+obj <- read.csv("~/thumper/Work/Notes/Genomics/Cancer DMRs/Regions/Top_try.csv")
 
 ###############################################################
 ####Load in Rafa's objects (hopefully he won't move them):#####
@@ -110,7 +112,7 @@ Indexes=split(seq(along=pns),pns) #pns is from otherstuff.rda
 #   write.csv(obj,file=paste("table",object.i,".csv",sep=""), row.names=FALSE,quote=FALSE)
     
     ################Make pdf file of plots###########################
-    pdf("plot.pdf",width=11,height=8,pointsize=10)
+    pdf("topprobes1.pdf",width=11,height=8,pointsize=10)
     mypar()
     palette(rev(brewer.pal(8,"Dark2")[c(2,1,3,4,8)]))
     ADD1=1500
@@ -151,16 +153,19 @@ Indexes=split(seq(along=pns),pns) #pns is from otherstuff.rda
       
       legend("topright",NAMES[comps],col=1:length(comps),lty=1,lwd=2)
       #I add this to just this file:
-      rug(c(obj$probe1[i],obj$maxprobestartT[i]+50),col="red",
-          lwd=3,side=1)
-      rug(c(obj$probe2[i],obj$maxprobestartD[i]+50),col="orange",
-          lwd=3,side=3)
-      rug(c(obj$probe3[i],obj$maxprobestartD[i]+50),col="green",
-          lwd=3,side=1)
-      rug(c(obj$probe4[i],obj$maxprobestartD[i]+50),col="blue",
-          lwd=3,side=3)
-      rug(c(obj$probe4[i],obj$maxprobestartD[i]+50),col="purple",
-          lwd=3,side=1)
+      #This shows the location of the top probes
+
+      #From Rafa book on R(Gentleman et al, R and Bioconductor) p. 35
+      #Set a colormap
+
+      rainbow <- brewer.pal(nummy, "Spectral")
+      
+      for(f in 0:nummy-1){
+        probey=obj[i,f*2+12]
+        toppy=1+2*(f%%2)
+        if(!identical(probey, NA)) rug(c(probey,probey+50),col=rainbow[(f%%10)+1],lwd=3,side=toppy)
+      }
+      
       
       ##PLOT CPG ISLANDS
       if(spec=="human") seq<-Hsapiens[[as.character(thechr) ]]

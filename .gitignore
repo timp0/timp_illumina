@@ -1,3 +1,7 @@
 # a comment - this is ignored
-.#*       # no autosave
-._*       # no spotlight
+Hector*
+.DS_Store
+._*
+*~
+.\#*
+.Rhistory

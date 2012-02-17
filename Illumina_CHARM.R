@@ -81,40 +81,80 @@ plotfullCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),cont
   dev.off()
 }
 
-heatCHARM <- function(data, namey) {
+CHARMmatch <- function (chrom, loc, charm_nfo, num=5) {
+
+
+  
+  rel=array(0,c(length(chrom), num))
+  
+  for (i in 1:length(chrom)) {
+    
+    ##Matching chromosome check - give a low score if matches for sorting
+    chr=charm_nfo$chr!=paste("chr",chrom[i],sep="")
+    ##distance to illumina probe i
+    distbp=abs(charm_nfo$loc-loc[i])
+    rel[i,]=order(chr,distbp)[1:num]    
+    ##sort and take top num
+    print(i)
+  }
+
+  return(rel)
+  
+}
+
+
+
+heatCHARM <- function(namey="CHARM_heat.pdf") {
+
+  ch_n=FACS=="colon:normal"
+  ch_t=FACS=="colon:tumor"
+
+  norm=apply(CHIL, 1, function(x) apply(M[x,ch_n], 2, median))
+  tumor=apply(CHIL, 1, function(x) apply(M[x,ch_t], 2, median))
+ 
+  divider=factor(c(rep(1, times=nrow(norm)), rep(2, times=nrow(tumor)) ))
+  labels=divider
+  levels(divider)=rainbow(2)
+  levels(labels)=c("colon:normal", "colon:tumor")
+  fully=rbind(norm, tumor)
+  
+  pdf(paste("Movie/", namey, sep=""), width=11, height=8)
+
+  r=seriate(dist(fully), method="OLO", control=list(method="ward"))
+  c=seriate(dist(t(fully)), method="OLO", control=list(method="ward"))
+  
+  col.heat <- heatmap.2(as.matrix(t(fully)), dendrogram="both", trace="none", labCol=labels, ColSideColors=as.character(divider),  , labRow="", col=brewer.pal(11, "RdYlBu"), hclustfun=hclust.ward,
+                        Rowv=as.dendrogram(c[[1]]), Colv=as.dendrogram(r[[1]]) )
+
+  col.heat <- heatmap.2(as.matrix(rescale_cpg(t(fully), numdev=1.5)), dendrogram="both", trace="none", labCol=labels, ColSideColors=as.character(divider),  , labRow="", col=brewer.pal(11, "RdYlBu"),
+                        hclustfun=hclust.ward, Rowv=as.dendrogram(c[[1]]), Colv=as.dendrogram(r[[1]]) )
+
+  
+  dev.off()
 
 
 }
 
-plotPlatform <- function(data, namey) {
+plotPlatform <- function(avg, sampy,CHIL, namey="CHIL1.pdf") {
   #Ok - plot avg of 5 closest CHARM values in the area vs the avg probe value
 
   #First let's calculate the difference value for each probe in Illumina
-  norm=(data$samp$Progression==0)&(data$samp$Class==3)
-  tum=(data$samp$Progression>2)&(data$samp$Class==3)
+  norm=(sampy$Progression==0)&(sampy$Class==3)
+  tum=(sampy$Progression>2)&(sampy$Class==3)
 
-  normvals=rowMeans(data$qbeta[,norm])
-  tumvals=rowMeans(data$qbeta[,tum])
+  normvals=rowMeans(avg[,norm])
+  tumvals=rowMeans(avg[,tum])
   ildiff=tumvals-normvals
 
   probec=ifelse(data$probes$UCSC_Dist_to_Island>0,"red", "green")
   probec[data$probes$UCSC_Dist_to_Island>2000]="blue"
   
-  charmdiff=numeric()
-  #Get CHARM diffs
-  for (i in 1:384) {
-    ##Matching chromosome check
-    chrom=charm_nfo$chr!=paste("chr",data$probes$Chromosome[i],sep="")
-    #distance to illumina probe i
-    distbp=abs(charm_nfo$loc-data$probes$Start_loc[i])
-    ##sort and take top 10
-    rel=order(chrom,distbp)[1:5]
-    charmdiff[i]=median(sMM[rel,5]-sMM[rel,4])
-    ##Probe colors - red for island, green for shore, blue for far
-  }
+  charmdiff=apply(CHIL,1,function(x) median(sMM[x,5]-sMM[x,4]))
+  
   
   pdf(file.path("Movie", namey))
   plot(ildiff,charmdiff, col=probec, pch=19, ylab="CHARM difference", xlab="Illumina difference")
+  legend("topright", c("Islands", "Shores", "Far"), col=c("red", "green", "blue"), pch=19)
   abline(h=0, lty=2)
   abline(v=0, lty=2)
   
@@ -126,7 +166,15 @@ plotPlatform <- function(data, namey) {
 
 
 ##CHARM probe loc load
-load("CHARM_nfo.rda")
+if (!exists("charm_nfo")) {
+  load("CHARM_nfo.rda")
+}
 
 ##Load CHARM Data
-load("CHARM_data.rda")
+if (!exists("M")) {
+  load("CHARM_data.rda")
+}
+
+if (!exists("CHIL")) {
+  load("CHIL.rda")
+}
