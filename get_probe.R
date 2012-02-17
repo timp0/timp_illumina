@@ -11,6 +11,9 @@ x <- read.xls("~/thumper/Work/Notes/Genomics/Cancer DMRs/Regions/Cancer_dmr_shor
 load("~/cancer_dmr/From_Rafa/otherstuff.rda")
 load("~/cancer_dmr/From_Rafa/sMM.rda")
 
+#Number of probes to get
+nummy <- 20
+
 
 #Assigns subscript to j or k - which finds which things in
 #names(INDEX) match
@@ -63,10 +66,10 @@ stopifnot(all(indexchr==x[,1]))
 #maxprobeT <- numeric(length=length(pbs))
 #maxprobeD <- numeric(length=length(pbs))
 
-#Initialize array - I'm going to want top 5 probes, along with their
+#Initialize array - I'm going to want top nummy probes, along with their
 #deltaM/cv values, for each region.
 
-bestprobes <- array(0, dim=c(length(pbs),3,5))
+bestprobes <- array(0, dim=c(length(pbs),3,nummy))
 
 for(i in 1:length(pbs)){
 
@@ -75,17 +78,16 @@ for(i in 1:length(pbs)){
   sorted=sort(abs(region), index.return=TRUE, decreasing=TRUE)
 
   #Get probe locations
-  bestprobes[i,1,]=pbs[[i]][sorted$ix[1:5]]
+  bestprobes[i,1,]=pbs[[i]][sorted$ix[1:nummy]]
   #Get probe deltaMs
-  bestprobes[i,2,]=sorted$x[1:5]
+  bestprobes[i,2,]=sorted$x[1:nummy]
 
+ 
 }
 
 
 #Get probe coordinates
 bestprobes[,3,] <- pos[bestprobes[,1,]]
-
-
 
 
 #A check, to make sure these positions are inside the DMRs:
@@ -95,22 +97,25 @@ bestprobes[,3,] <- pos[bestprobes[,1,]]
 #    stopifnot(between(coordsD[k],x[k,2],x[k,3]))
 #}
 
+
 x$index <- index
-x$probe1 <- bestprobes[,3,1]
-x$deltam1 <- bestprobes[,2,1]
-x$probe2 <- bestprobes[,3,2]
-x$deltam2 <- bestprobes[,2,2]
-x$probe3 <- bestprobes[,3,3]
-x$deltam3 <- bestprobes[,2,3]
-x$probe4 <- bestprobes[,3,4]
-x$deltam4 <- bestprobes[,2,4]
-x$probe5 <- bestprobes[,3,5]
-x$deltam5 <- bestprobes[,2,5]
+
+for(i in 1:nummy){
+  probe_loc = bestprobes[,3,i];
+  probe_deltam = bestprobes[,2,i];
+
+  x <- cbind(x, probe_loc)
+  x <- cbind(x, probe_deltam)
+
+}
 
 
 
 
-write.csv(x,file="~/cancer_dmr/Analysis/Top5_try.csv",row.names=FALSE,quote=FALSE)
+
+
+
+write.csv(x,file="~/thumper/Work/Notes/Genomics/Cancer DMRs/Regions/Top_try.csv",row.names=FALSE,quote=FALSE)
  
 #############################################################################
 #Now for the plots:

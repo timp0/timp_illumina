@@ -64,7 +64,7 @@ while (<>) {
 	
 	$sender->add_SeqFeature($feat);
 	
-	$sequency = $sender->subseq($feat->start,$feat->end);
+	$sequency = $sender->subseq($span,($sender->length)-$span);
 	
 	#print $sequency, "\n";
 

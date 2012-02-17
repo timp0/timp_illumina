@@ -123,12 +123,17 @@ heatCHARM <- function(namey="CHARM_heat.pdf") {
   r=seriate(dist(fully), method="OLO", control=list(method="ward"))
   c=seriate(dist(t(fully)), method="OLO", control=list(method="ward"))
   
-  col.heat <- heatmap.2(as.matrix(t(fully)), dendrogram="both", trace="none", labCol=labels, ColSideColors=as.character(divider),  , labRow="", col=brewer.pal(11, "RdYlBu"), hclustfun=hclust.ward,
+  col.heat <- heatmap.2(as.matrix(t(fully)), dendrogram="both", trace="none", labCol=labels, ColSideColors=as.character(divider), labRow="", col=brewer.pal(11, "RdYlBu"), hclustfun=hclust.ward,
                         Rowv=as.dendrogram(c[[1]]), Colv=as.dendrogram(r[[1]]) )
 
-  col.heat <- heatmap.2(as.matrix(rescale_cpg(t(fully), numdev=1.5)), dendrogram="both", trace="none", labCol=labels, ColSideColors=as.character(divider),  , labRow="", col=brewer.pal(11, "RdYlBu"),
+  col.heat <- heatmap.2(as.matrix(rescale_cpg(t(fully), numdev=1)), dendrogram="both", trace="none", labCol=labels,
+                        ColSideColors=as.character(divider),  labRow="", col=brewer.pal(11, "RdYlBu"),
                         hclustfun=hclust.ward, Rowv=as.dendrogram(c[[1]]), Colv=as.dendrogram(r[[1]]) )
 
+  col.heat <- heatmap.2(as.matrix(rescale_cpg(t(fully), numdev=1.5)), dendrogram="both", trace="none", labCol=labels,
+                        ColSideColors=as.character(divider),  labRow="", col=brewer.pal(11, "RdYlBu"),
+                        hclustfun=hclust.ward, Rowv=as.dendrogram(c[[1]]), Colv=as.dendrogram(r[[1]]), scale="row")
+  
   
   dev.off()
 
@@ -178,3 +183,8 @@ if (!exists("M")) {
 if (!exists("CHIL")) {
   load("CHIL.rda")
 }
+
+source("~/Work/Analysis/Illumina/Illumina_cluster1b.R")
+
+
+##plotfullCHARM(data$probes,genes,avg_data,sampy,"Movie/colon_charm.pdf",c(4:5))

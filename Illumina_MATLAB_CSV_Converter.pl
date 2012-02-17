@@ -7,14 +7,16 @@
 
 #Define Subroutines:
 sub tumnorm {
-  $rep=$sample_break[1];
-  if ($rep =~ m/T/) {
-    $rep=~s/T//;
-    print SAMPLE $j*2,",$rep,-1\n";
+  $other_id=$sample_break[1];
+  if ($other_id =~ m/T/) {
+    $other_id=~s/T//;
+    $class=$j*2;
+    $note=-1;
   }
-  if ($rep =~ m/N/) {
-    $rep=~s/N//;
-    print SAMPLE ($j*2)+1, ",$rep,-1\n";
+  if ($other_id =~ m/N/) {
+    $other_id=~s/N//;
+    $class=($j*2)+1;
+    $note=-1;
   }
 }
 
@@ -32,13 +34,24 @@ $data_file =~ s/.csv/_mat_data.csv/;
 
 
 #Create Convert Table
-$naming_file = "031109_renamed1.csv";
+$naming_file = "timp_ordered1.csv";
 
 open(CONVERT, "< $naming_file");
+
+#Check for near probes
+$k=0;
+$near_what=Inf;
+$near_chrom=Q;
 while (<CONVERT>) {
   #Split input
   @convert_fields = split /,/;
-  @convert_min = ($convert_fields[0],$convert_fields[10]);
+  if (($convert_fields[3]!~$near_chrom)|(abs($convert_fields[4]-$near_what)>10000)) {
+    $k++;
+    print "$convert_fields[0],$convert_fields[10],$near_what, $near_chrom, $k\n";
+    $near_what=$convert_fields[4];
+    $near_chrom=$convert_fields[3];
+  }
+  @convert_min = ($convert_fields[0],$convert_fields[10], $k);
   push @convert_table, [@convert_min];
 }
 
@@ -66,7 +79,6 @@ for ($i=15; $i<$header_size; $i=$i+5) {
   $sample_name = $header_field[$i];
   #Remove trailing garbage
   $sample_name =~ s/@\S+//;
-  print SAMPLE "$sample_name,";
   #Also set a class:
   #1 - Controls
   #2 - Breast Tumor
@@ -84,21 +96,25 @@ for ($i=15; $i<$header_size; $i=$i+5) {
 
   @sample_break = split(/_/,$sample_name);
   if ($sample_name =~ m/CIDR/) {
+    $class=1;
+    $note=$sample_break[1];
     #Check for replicate
     if ($sample_name =~ m/0_/) {
-      print SAMPLE "1,$sample_break[2],$sample_break[1]\n";
+      $other_id=$sample_break[2];
     } else {
-      print SAMPLE "1,0,$sample_break[1]\n";
-    }
-    
+      $other_id=0;
+    }   
   }
   if ($sample_name =~ m/Half/) {
-    $rep=$sample_break[1];
-    $rep=~s/HalfM//;
-    print SAMPLE "1,$rep,50\n";
+    $class=1;
+    $other_id=$sample_break[1];
+    $other_id=~s/HalfM//;
+    $note=50;
   }
   if ($sample_name =~ m/Cross/) {
-    print SAMPLE "12,$sample_break[2],$sample_break[3]\n";
+    $class=12;
+    $other_id=$sample_break[2];
+    $note=$sample_break[3];
   }
   if ($sample_name =~ m/Breast/) {
     $j=1;
@@ -120,14 +136,20 @@ for ($i=15; $i<$header_size; $i=$i+5) {
     $j=5;
     &tumnorm;
   }
-  
-}
 
+print SAMPLE "$sample_name,$class,$other_id,$note\n";
+print DATA $sample_name,"_AVG,",$sample_name,"_CY3,",$sample_name,"_CY5,",$sample_name,"_NUMBEADS,",$sample_name,"_STDERR,";
+
+}
+print DATA "\n";
 
 
 close(SAMPLE);
 
-#
+#TARGET Header file
+print TARGET "Probe_ID,Illumina_ID,Chromosome,Start_loc,Finish_loc,Good_bad,Region\n";
+
+
 while (<CSVFILE>) {
   s/\r\n//;
   @fields = split /,/;
@@ -137,11 +159,11 @@ while (<CSVFILE>) {
   foreach $aref (@convert_table) {
     if (@$aref[0] =~ m/$fields[0]/) {
       #ProbeID, IlluminaID, chromosome, start, end(same in my case), good_probe
-	print TARGET "@$aref[1],$fields[0],$fields[1],$fields[11],$fields[11], 1\n";
+	print TARGET "@$aref[1],$fields[0],$fields[1],$fields[11],$fields[11], 1,@$aref[2]\n";
+	print DATA "@$aref[1],";
 	last;
       } 
     }
-  #Target_ID
 
   #Data
   for ($i=15; $i<$header_size; $i=$i+5) {

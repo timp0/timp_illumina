@@ -1,4 +1,4 @@
-function [bad_slope] = illumina_methylation_control_samp2(data)
+function [data] = illumina_methylation_control_samp3(data)
 %Illumina methylation controls
 
 close all;
@@ -7,55 +7,40 @@ close all;
 control_samples=data.sample_class==1;
 
 %Extract Methylation percentages(real)
-data.actual_meth=double(data.sample_other(control_samples));
+actual_meth=double(data.sample_other(control_samples));
 
 %Extract Data from Control Samples
 
+data.adj=data.avg;
+
+meas_meth=data.avg(:,control_samples);
 
 
-data.meas_meth.avg=data.avg(:,control_samples);
-data.meas_meth.cy5=data.cy5(:,control_samples);
-data.meas_meth.cy3=data.cy3(:,control_samples);
 
 
-for i=1:size(data.meas_meth.avg,1)    
+for i=1:size(meas_meth,1)    
     figure('Visible','off');
-        [data.gene_fit{i} data.gof_fit{i}]=fit(data.actual_meth,data.meas_meth.avg(i,:)', ...
-            'poly1');
-        subplot(1,3,1);
-        plot(data.actual_meth,data.meas_meth.avg(i,:),'o','MarkerSize', 14);
-        hold all;
-        %For some reason, plotting a cfit object doesn't work if you put
-        %LineWidth in there, so change after . .
-        h=plot(data.gene_fit{i});
-        set(h, 'LineWidth', 1.5);
-        
-        coefs=coeffvalues(data.gene_fit{i});
-        if coefs(1)<0
-            bad_slope(i)=1;
-        else
-            bad_slope(i)=0;
-        end
-        
-        
-        cy3_fit{i}=fit(data.actual_meth, data.meas_meth.cy3(i,:)', 'poly1');
-        subplot(1,3,2);
-        plot(data.actual_meth, data.meas_meth.cy3(i,:),'o', 'MarkerSize', 14);
-        hold all;
-        h=plot(cy3_fit{i});
-        set(h, 'LineWidth', 1.5);
-        
-        cy5_fit{i}=fit(data.actual_meth, data.meas_meth.cy5(i,:)', 'poly1');
-        subplot(1,3,3);
-        plot(data.actual_meth, data.meas_meth.cy5(i,:),'o', 'MarkerSize', 14);
-        hold all;
-        h=plot(cy5_fit{i});
-        set(h, 'LineWidth', 1.5);
-        
-        
-        print('-dpng', ['Movie/Controls/' data.genes{i} '.png']);
-        close all;
+    [data.genes.fit{i} data.genes.gof_fit{i}]=fit(actual_meth,meas_meth(i,:)', ...
+        'poly1');
+    plot(actual_meth,meas_meth(i,:),'o','MarkerSize', 14);
+    hold all;
+    %For some reason, plotting a cfit object doesn't work if you put
+    %LineWidth in there, so change after . .
+    h=plot(data.genes.fit{i});
+    set(h, 'LineWidth', 1.5);
+    
+    coefs=coeffvalues(data.genes.fit{i});
+    if coefs(1)<0
+        data.neg_slope(i)=true;
+    else
+        data.neg_slope(i)=false;
     end
+    
+    print('-dpng', ['Movie/Controls/' data.genes.label{i} '.png']);    
+    close all;
+    
+    data.adj(i,:)=data.genes.fit{i}(data.avg(i,:));
     
 end
 
+end

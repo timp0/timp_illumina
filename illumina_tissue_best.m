@@ -1,4 +1,4 @@
-function [tissue_info] = illumina_tissue_best2a(data,modif)
+function [tissue_info] = illumina_tissue_best2b(data,modif)
 
 close all hidden;
 
@@ -22,7 +22,7 @@ for i=1:5
     normal_data=data.avg(:,normy);
     
     tic
-    [best_index, best_info]=illumina_pvalue1(data.genes,['sub_' modif '_' broken{1}],tumor_data,normal_data);
+    [best_index, best_info]=illumina_pvalue2(data.genes,['sub_' modif '_' broken{1}],tumor_data,normal_data);
     toc
     illumina_genes_sub(data,best_index, best_info, sampy, [broken{1} '_' modif]);
     
