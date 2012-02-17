@@ -20,7 +20,8 @@ $i=1;
 #$k=0;
 #Take input from first line
 while (<>) {
-    if (/chr(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+)/)
+    #print $_;
+    if (/chr(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+)/)
     {
 	$id_name = $6;
 	$chromey = $1;
@@ -28,8 +29,16 @@ while (<>) {
 	$finish = $3+$span;
 	$delta_m = $4;
 	$fdr = $5;
-	$consist = $7;
-	$largest = $8;
+	$probe1 = $7;
+	$deltam1 = $8;
+	$probe2 = $9;
+	$deltam2 = $10;
+	$probe3 = $11;
+	$deltam3 = $12;
+	$probe4 = $13;
+	$deltam4 = $14;
+	$probe5 = $15;
+	$deltam5 = $16;
 	
 	
 	
@@ -64,17 +73,17 @@ while (<>) {
 	$sender->add_SeqFeature($feat);
 
 
-#Probes are 50bp long - Define Annotation for Probe most consistantly different and probe with largest difference
-	$feat = new Bio::SeqFeature::Generic(-start => ($consist-$begin),
-					     -end => ($consist-$begin+50),
-					     -primary_tag => 'CHARM_TProbe',
-					     -tag => {note => 'Geneious name: CHARM Consistant Probe'});
+#Probes are 50bp long - Define Annotation for Probe(s)
+	$feat = new Bio::SeqFeature::Generic(-start => ($probe1-$begin),
+					     -end => ($probe1-$begin+50),
+					     -primary_tag => 'CHARM Probe 1',
+					     -tag => {DeltaM => $deltam1, note => 'Geneious name: CHARM Probe #1'});
 	$sender->add_SeqFeature($feat);
 
 	$feat = new Bio::SeqFeature::Generic(-start => ($largest-$begin),
 					     -end => ($largest-$begin+50),
-					     -primary_tag => 'CHARM_DProbe',
-					     -tag => {note => 'Geneious name: CHARM Largest Probe'});
+					     -primary_tag => 'CHARM Probe 2',
+					     -tag => {note => 'Geneious name: CHARM Probe #2'});
 	$sender->add_SeqFeature($feat);
 	
 		
@@ -125,7 +134,7 @@ while (<>) {
     }
 }
 
-#print "For a total of $k CpGs.\n";
+print "For a total of $k CpGs.\n";
 
 
 

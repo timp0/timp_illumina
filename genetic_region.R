@@ -138,7 +138,31 @@ plotgenes <- function(genes,chromy, start, end){
   }
 }
 
-plotClass <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,which,outname,controls=TRUE) {
+plotCHARM <- function(chromy,start,end,class=c(1:10)) {
+  ##class is a name
+
+  ##Set Possible CHARM Colors - don't think I will need more than these - leave them for now
+  coloring=c("black","coral1","coral4","cadetblue1","cadetblue4","goldenrod1","goldenrod4","seagreen1","seagreen4","plum1","plum4")
+
+  ##Find probes which are in my region
+  in_region=( (charm_nfo$chr==chromy) & ((charm_nfo$loc>start)&(charm_nfo$loc<end)) )
+  ##Which individual value classes match sMM classes being plotted
+  classname=colnames(sMM)
+  ##Get number of types(don't necessarily know it)
+  numtypes=length(class)
+  ##Assign each type a color
+  typecolor=factor(FACS,levels=classname[class],label=coloring[1:numtypes])
+  #plot sample points
+  matpoints(charm_nfo$loc[in_region],M[in_region,],col=typecolor,pch=1)
+  #plot smoothed data
+  matlines(charm_nfo$loc[in_region],sMM[in_region,class],col=coloring[1:numtypes],lwd=2, lty=1)
+
+  legend("topright",levels(factor(class)),col=coloring[1:numtypes],lty=1,lwd=2)
+
+}
+
+
+plotClass <- function(probes,genes,avg_data,sampy,which,outname,controls=TRUE) {
   ##
   ##Start Plot
   pdf(outname,width=11,height=8)
@@ -171,16 +195,18 @@ plotClass <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,w
     ##Plot CpGDensity
     plotcpgdens(chromy,index[1],index[final_index])
 
+    ##Plot Island locations
+    plotucsc(ucsc_isl,chromy, index[1],index[final_index]) 
+    plothmm(hmm_isl,chromy,index[1],index[final_index])
+    legend("topleft",c("UCSC Islands", "HMM Islands"),col=c("blue", "red"),lty=1,lwd=2)
+
+    
     ##Plot Controls
     if (controls) {
       ##Stay on same plot
       par(new=T)
       plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
     }
-    ##Plot Island locations
-    plotucsc(ucsc_isl,chromy, index[1],index[final_index]) 
-    plothmm(hmm_isl,chromy,index[1],index[final_index])
-    legend("topleft",c("UCSC Islands", "HMM Islands"),col=c("blue", "red"),lty=1,lwd=2)
     
     ##Plot RefSeq Gene regions
     plotgenes(genes,chromy, index[1], index[final_index])
@@ -188,9 +214,7 @@ plotClass <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,w
   dev.off()
 }
 
-
-
-plotfullTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,outname,controls=TRUE) {
+plotfullTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
   ##
   ##Start Plot
   pdf(outname,width=11,height=8)
@@ -256,6 +280,63 @@ plotfullTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,
 }
 
 
+plotclassCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),controls=TRUE) {
+
+  ##
+  ##Start Plot
+  pdf(outname,width=11,height=8)
+  par(mfrow=c(3,1))
+  layout(c(1:3),heights=c(0.5,0.3,0.2))
+  par(mar=c(2,1,0,1),mgp=c(1.5,.5,0),oma=c(0,1,2,1)) 
+  
+  
+  ##Loop through all regions
+  for (i in unique(probes$Region)) {
+    ##Find probes which are in the same region - this was previously defined by perl in the probes$Region command
+    not_far<-probes[(probes$Region==i),]
+    num_close<-nrow(not_far)
+    ##cat("Region: ",i,"\n")
+    ##Set which chromosome and coordinates we are using for the region
+    chromy <- paste("chr",not_far$Chromosome[1],sep="")
+    index=(min(not_far$Start_loc)-1000):(max(not_far$Finish_loc)+1000)
+    final_index=length(index)
+    plot(0,0,ylim=c(-0.5,3),xlim=c(index[1],index[final_index]),ylab="Methylation",xlab="",type="n",axes=F)
+    box()
+    axis(2, at=seq(0,1,.2))
+    ##Plot actual samples
+    plotCHARM(chromy,index[1],index[final_index],charm)
+    ##Plot label on axis as a tick on the bottom
+    axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
+    
+    ##Plot title to graph
+    mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
+
+    ##Plot CpGDensity
+    plotcpgdens(chromy,index[1],index[final_index])
+
+    ##Plot Island locations
+    plotucsc(ucsc_isl,chromy, index[1],index[final_index]) 
+    plothmm(hmm_isl,chromy,index[1],index[final_index])
+    legend("topleft",c("UCSC Islands", "HMM Islands"),col=c("blue", "red"),lty=1,lwd=2)
+
+
+    ##Plot Controls
+    if (controls) {
+      ##Stay on same plot
+      par(new=T)
+      plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
+    }
+    
+    ##Plot RefSeq Gene regions
+    plotgenes(genes,chromy, index[1], index[final_index])
+  }
+  dev.off()
+}
+
+
+
+##START MAIN
+
 ##Load libraries in
 library(BSgenome)
 library(BSgenome.Hsapiens.UCSC.hg18)
@@ -279,7 +360,11 @@ old_avg_data<-raw_old[,seq(2,ncol(raw_old)-1,by=5)]
 sampy<-read.csv("New_norm_mat_sample.csv",stringsAsFactors=FALSE)
 old_sampy<-read.csv("Old_Illumina_pri_mat_sample.csv",stringsAsFactors=FALSE)
 
+##CHARM probe loc load
+load("CHARM_nfo.rda")
 
+##Load CHARM Data
+load("CHARM_data.rda")
 
 ##Define Classes/Colors
 class_stuff=data.frame(nums=c(1,2,3,4,5,6,7,8,9,10,11),
@@ -288,11 +373,17 @@ class_stuff=data.frame(nums=c(1,2,3,4,5,6,7,8,9,10,11),
 
 
 ##Plot new data all sets
-plotfullTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,"Movie/full_bad.pdf")
+
+##plotfullTN(probes,genes,avg_data,sampy,"Movie/full.pdf")
 ##Plot old data wilms/colon(all I have right now)
-plotfullTN(old_probes,ucsc_isl,hmm_isl,genes,old_avg_data,old_sampy,class_stuff,"Movie/old_full.pdf",FALSE)
+
+##plotfullTN(old_probes,ucsc_isl,hmm_isl,genes,old_avg_data,old_sampy,class_stuff,"Movie/old_full.pdf",FALSE)
 ##Plot new normals against each other
-##plotClass(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(3,5,7,9,11),"Movie/normals_R.pdf")
-#plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(6:7),"lung_R.pdf")
+
+##(probes,genes,avg_data,sampy,outname,charmloc,controls=TRUE) {
+plotclassCHARM(probes,genes,avg_data,sampy,"Movie/charm2.pdf",c(4:5)) 
+
+
+##plotClass(probes,genes,avg_data,sampy,c(6:7),"Movie/lung_R.pdf")
 #plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(8:9),"ovary_R.pdf")
 #plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(10:11),"wilms_R.pdf")
