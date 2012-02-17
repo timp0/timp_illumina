@@ -90,7 +90,7 @@ while (<>) {
     #Define annotation for CHARM Region - this was the original start and end given in the line
     $feat = new Bio::SeqFeature::Generic(-start => $span,
 					 -end => ($sender->length)-$span,
-					 -primary_tag => 'CHARM_Region_$i',
+					 -primary_tag => 'CHARM_Region',
 					 -tag => {note => 'Geneious name: CHARM Region'});
     $sender->add_SeqFeature($feat);
     
