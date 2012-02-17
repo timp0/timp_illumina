@@ -1,0 +1,5 @@
+This repository is the home of various pieces of code for analyzing Illumina Beadarray Methylation Data
+
+Most of the code is in R with Bioconductor packages, though there is some MATLAB and perl code as well.
+
+
