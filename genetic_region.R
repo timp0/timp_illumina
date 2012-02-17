@@ -102,8 +102,44 @@ plotsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) 
   
 }
 
+plotdsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) {
+  ##Determine how many probes per region
+  numprobes=nrow(not_far)
+  ##Setup that many plots
+  layout(rbind(matrix(1:(5*numprobes),nrow=numprobes,byrow=T), rep((numprobes*5+1),5), rep((numprobes*5+2),5)),heights=c(rep((0.5/numprobes),numprobes),0.3,0.2))
+  ##layout(c(1:3),heights=c(0.5,0.3,0.2))
+  par(mar=c(2,1,0,1),mgp=c(1.5,.5,0),oma=c(0,1,2,1))
+
+  inorder=not_far[order(not_far$Start_loc),]
+
+  for (m in 1:numprobes) {
+    probenum=as.numeric(row.names(inorder)[m])
+
+    for (n in 1:5) {
+      plot(0,0,ylim=c(0,7),xlim=c(-0.2,1.2),xlab="",type="n")
+      
+      rawnum<-as.numeric(avg_data[probenum,(sampy$Class==2*n)])
+      d_data<-density(rawnum,from=0, to=1)
+      lines(d_data,col=class_stuff$coloring[2*n])
+      rug(rawnum,side=1,col=class_stuff$coloring[2*n])
+
+      rawnum<-as.numeric(avg_data[probenum,(sampy$Class==(2*n+1))])
+      d_data<-density(rawnum,from=0, to=1)
+      lines(d_data,col=class_stuff$coloring[2*n+1])
+      rug(rawnum,side=3,col=class_stuff$coloring[2*n+1])
+    }
+
+  }
+}
+  
+
     
 plotgenes <- function(genes,chromy, start, end){
+  ##For gene plotting, 
+  ori=c(start,end)
+
+  start=max(c(1,start-1e6))
+  end=end+1e6
   ##Find Genes in Region
   in_genes=genes[( (genes$chrom==chromy)& ( ((genes$txStart>start)&(genes$txStart<end))|((genes$txEnd>start)&(genes$txEnd<end)))),]    
   ##Plot Genes
@@ -111,6 +147,8 @@ plotgenes <- function(genes,chromy, start, end){
        xlab="")
   ##Label Y-axis
   axis(2,c(-1,1),c("-","+"),tick=FALSE,las=1)
+  polygon(c(ori[1],ori[2],ori[2],ori[1]),c(-1.5, -1.5, 1.5, 1.5),col="green")
+
   ##Add dotted line
   abline(h=0,lty=3)
 
@@ -136,28 +174,29 @@ plotgenes <- function(genes,chromy, start, end){
       ##turns into 3 (above)
     }
   }
+
 }
 
 plotCHARM <- function(chromy,start,end,class=c(1:10)) {
   ##class is a name
 
   ##Set Possible CHARM Colors - don't think I will need more than these - leave them for now
-  coloring=c("black","coral1","coral4","cadetblue1","cadetblue4","goldenrod1","goldenrod4","seagreen1","seagreen4","plum1","plum4")
+  coloring=c("black","coral1","coral4","cadetblue4","cadetblue1","goldenrod1","goldenrod4","seagreen1","seagreen4","plum1","plum4")
 
   ##Find probes which are in my region
   in_region=( (charm_nfo$chr==chromy) & ((charm_nfo$loc>start)&(charm_nfo$loc<end)) )
   ##Which individual value classes match sMM classes being plotted
   classname=colnames(sMM)
-  ##Get number of types(don't necessarily know it)
-  numtypes=length(class)
+  ##Get Correct Samples
+  right=sapply(FACS,function(x) any(x==classname[class]))
   ##Assign each type a color
-  typecolor=factor(FACS,levels=classname[class],label=coloring[1:numtypes])
+  typecolor=as.character(factor(FACS[right],levels=classname[class],label=coloring[class]))
   #plot sample points
-  matpoints(charm_nfo$loc[in_region],M[in_region,],col=typecolor,pch=1)
+  matpoints(charm_nfo$loc[in_region],M[in_region,right],pch=1,col=typecolor)
   #plot smoothed data
-  matlines(charm_nfo$loc[in_region],sMM[in_region,class],col=coloring[1:numtypes],lwd=2, lty=1)
+  matlines(charm_nfo$loc[in_region],sMM[in_region,class],col=coloring[class],lwd=2, lty=1)
 
-  legend("topright",levels(factor(class)),col=coloring[1:numtypes],lty=1,lwd=2)
+  legend("topright",classname[class],col=coloring[class],lty=1,lwd=2)
 
 }
 
@@ -280,14 +319,61 @@ plotfullTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
 }
 
 
-plotclassCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),controls=TRUE) {
+plotfulldTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
+  ##
+  ##Start Plot
+  pdf(outname,width=11,height=8)
+  
+  ##Loop through all regions
+  ##for (i in unique(probes$Region)) {
+  for (i in 1) {
+  
+  ##Find probes which are in the same region - this was previously defined by perl in the probes$Region command
+    not_far<-probes[(probes$Region==i),]
+    num_close<-nrow(not_far)
+    
+    ##Set which chromosome and coordinates we are using for the region
+    chromy <- paste("chr",not_far$Chromosome[1],sep="")
+    ##cat("Region ", i, "\n")
+    index=(min(not_far$Start_loc)-1000):(max(not_far$Finish_loc)+1000)
+    final_index=length(index)
+
+    plotdsamples(class_stuff,probes, avg_data,sampy,not_far,i,start)
+
+    ##Plot title to graph
+    mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
+
+    ##Plot CpGDensity
+    plotcpgdens(chromy,index[1],index[final_index])
+
+    ##Plot Island locations
+    plotucsc(ucsc_isl,chromy, index[1],index[final_index]) 
+    plothmm(hmm_isl,chromy,index[1],index[final_index])
+    legend("topleft",c("UCSC Islands", "HMM Islands"),col=c("blue", "red"),lty=1,lwd=2)
+
+    ##Plot Controls
+    if (controls) {
+      ##Stay on same plot
+      par(new=T)
+      plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
+    }
+    
+    ##Plot RefSeq Gene regions
+    plotgenes(genes,chromy, index[1], index[final_index])
+  }
+  dev.off()
+}
+
+
+plotfullCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),controls=TRUE) {
 
   ##
   ##Start Plot
   pdf(outname,width=11,height=8)
   par(mfrow=c(3,1))
-  layout(c(1:3),heights=c(0.5,0.3,0.2))
+  layout(rbind(1:5,rep(6,5),rep(7,5)),heights=c(0.5,0.3,0.2))
   par(mar=c(2,1,0,1),mgp=c(1.5,.5,0),oma=c(0,1,2,1)) 
+
   
   
   ##Loop through all regions
@@ -300,33 +386,37 @@ plotclassCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),con
     chromy <- paste("chr",not_far$Chromosome[1],sep="")
     index=(min(not_far$Start_loc)-1000):(max(not_far$Finish_loc)+1000)
     final_index=length(index)
+    ##Plot actual samples
+    for (k in 1:5){
+      ##Init sample plot
+      if (k==1){
+        plot(0,0,ylim=c(0,1.1),xlim=c(index[900],index[final_index-900]),ylab="Methylation",xlab="",type="n",axes=F)
+        box()
+        axis(2, at=seq(0,1,.2))
+      } else {
+        plot(0,0,ylim=c(0,1.1),xlim=c(index[900],index[final_index-900]),ylab="",xlab="",type="n",xaxt="n",yaxt="n")
+      }
+      if (any(sampy$Class==(k*2))) {
+        ##Plot actual samples
+        plotsamples(class_stuff[(k*2):(k*2+1),],probes,avg_data,sampy,not_far,i,index[1])
+        ##Plot label on axis as a tick on the bottom
+        axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
+        ##axis(side=1)
+      }
+    }
+    ##Plot title to graph
+    mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
+    
+    ##Make initial plot
     plot(0,0,ylim=c(-0.5,3),xlim=c(index[1],index[final_index]),ylab="Methylation",xlab="",type="n",axes=F)
     box()
-    axis(2, at=seq(0,1,.2))
-    ##Plot actual samples
+    axis(2)
+
+    ##Plot CHARM Data
     plotCHARM(chromy,index[1],index[final_index],charm)
     ##Plot label on axis as a tick on the bottom
     axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
-    
-    ##Plot title to graph
-    mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
 
-    ##Plot CpGDensity
-    plotcpgdens(chromy,index[1],index[final_index])
-
-    ##Plot Island locations
-    plotucsc(ucsc_isl,chromy, index[1],index[final_index]) 
-    plothmm(hmm_isl,chromy,index[1],index[final_index])
-    legend("topleft",c("UCSC Islands", "HMM Islands"),col=c("blue", "red"),lty=1,lwd=2)
-
-
-    ##Plot Controls
-    if (controls) {
-      ##Stay on same plot
-      par(new=T)
-      plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
-    }
-    
     ##Plot RefSeq Gene regions
     plotgenes(genes,chromy, index[1], index[final_index])
   }
@@ -374,14 +464,17 @@ class_stuff=data.frame(nums=c(1,2,3,4,5,6,7,8,9,10,11),
 
 ##Plot new data all sets
 
-##plotfullTN(probes,genes,avg_data,sampy,"Movie/full.pdf")
+##plotfullTN(probes,genes,avg_data,sampy,"Movie/full_big.pdf")
 ##Plot old data wilms/colon(all I have right now)
 
-##plotfullTN(old_probes,ucsc_isl,hmm_isl,genes,old_avg_data,old_sampy,class_stuff,"Movie/old_full.pdf",FALSE)
+##plotfullTN(old_probes,genes,old_avg_data,old_sampy,"Movie/old_full_big.pdf",FALSE)
 ##Plot new normals against each other
 
 ##(probes,genes,avg_data,sampy,outname,charmloc,controls=TRUE) {
-plotclassCHARM(probes,genes,avg_data,sampy,"Movie/charm2.pdf",c(4:5)) 
+##plotfullCHARM(probes,genes,avg_data,sampy,"Movie/colon_charm.pdf",c(4:5))
+##plotfullCHARM(probes,genes,avg_data,sampy,"Movie/es_charm.pdf",c(6:10))
+
+##plotfullCHARM(old_probes,genes,old_avg_data,old_sampy,"Movie/old_colon_charm.pdf",c(4:5))
 
 
 ##plotClass(probes,genes,avg_data,sampy,c(6:7),"Movie/lung_R.pdf")

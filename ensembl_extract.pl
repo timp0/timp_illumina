@@ -17,7 +17,7 @@ $span=500;
 
 
 $i=1;
-#$k=0;
+$k=0;
 #Take input from first line
 while (<>) {
     #print $_;
@@ -29,16 +29,23 @@ while (<>) {
 	$finish = $3+$span;
 	$delta_m = $4;
 	$fdr = $5;
-	$probe1 = $7;
-	$deltam1 = $8;
-	$probe2 = $9;
-	$deltam2 = $10;
-	$probe3 = $11;
-	$deltam3 = $12;
-	$probe4 = $13;
-	$deltam4 = $14;
-	$probe5 = $15;
-	$deltam5 = $16;
+
+	$relation = $7;
+	$TSS_dist = $8;
+	$CGI = $9;
+	$CGI_dist = $10;
+	$index = $11;
+
+	$probe1 = $12;
+	$deltam1 = $13;
+	$probe2 = $14;
+	$deltam2 = $15;
+	$probe3 = $16;
+	$deltam3 = $17;
+	$probe4 = $18;
+	$deltam4 = $19;
+	$probe5 = $20;
+	$deltam5 = $21;
 	
 	
 	
@@ -62,7 +69,7 @@ while (<>) {
 	$sender = Bio::Seq->new(-seq => $slice->seq,
 				-display_id => $id_name,
 				-accession_number => sprintf("%03d",$i),
-				-desc => "Chromosome $chromey $begin-$finish DeltaM: $delta_m FDR: $fdr");
+				-desc => "$CGI:$CGI_dist Chromosome $chromey $begin-$finish DeltaM: $delta_m FDR: $fdr $relation to $id_name, $TSS_dist bp");
 	
 
 	#Define annotation for CHARM Region - this was the original start and end given in the line
@@ -80,8 +87,35 @@ while (<>) {
 					     -tag => {DeltaM => $deltam1, note => 'Geneious name: CHARM Probe #1'});
 	$sender->add_SeqFeature($feat);
 
-	$feat = new Bio::SeqFeature::Generic(-start => ($largest-$begin),
-					     -end => ($largest-$begin+50),
+	$feat = new Bio::SeqFeature::Generic(-start => ($probe2-$begin),
+					     -end => ($probe2-$begin+50),
+					     -primary_tag => 'CHARM Probe ',
+					     -tag => {DeltaM => $deltam2, note => 'Geneious name: CHARM Probe #2'});
+	$sender->add_SeqFeature($feat);
+
+	$feat = new Bio::SeqFeature::Generic(-start => ($probe3-$begin),
+					     -end => ($probe3-$begin+50),
+					     -primary_tag => 'CHARM Probe 3',
+					     -tag => {DeltaM => $deltam3, note => 'Geneious name: CHARM Probe #3'});
+	$sender->add_SeqFeature($feat);
+
+	$feat = new Bio::SeqFeature::Generic(-start => ($probe4-$begin),
+					     -end => ($probe4-$begin+50),
+					     -primary_tag => 'CHARM Probe 4',
+					     -tag => {DeltaM => $deltam4, note => 'Geneious name: CHARM Probe #4'});
+	$sender->add_SeqFeature($feat);
+
+	$feat = new Bio::SeqFeature::Generic(-start => ($probe5-$begin),
+					     -end => ($probe5-$begin+50),
+					     -primary_tag => 'CHARM Probe 5',
+					     -tag => {DeltaM => $deltam5, note => 'Geneious name: CHARM Probe #5'});
+	$sender->add_SeqFeature($feat);
+
+
+
+
+	$feat = new Bio::SeqFeature::Generic(-start => ($probe2-$begin),
+					     -end => ($probe2-$begin+50),
 					     -primary_tag => 'CHARM Probe 2',
 					     -tag => {note => 'Geneious name: CHARM Probe #2'});
 	$sender->add_SeqFeature($feat);
@@ -101,7 +135,7 @@ while (<>) {
 	}
 	
         #Extract sequence from most consistantly different probe
-	$sequency = $sender->subseq(($consist-$begin),($consist-$begin+50));
+	$sequency = $sender->subseq(($probe1-$begin),($probe1-$begin+50));
 	
 	#print $sequency, "\n";
 	#Previously used to count num CpGs
@@ -110,26 +144,46 @@ while (<>) {
 	#stole this code:
 	#print "$id_name has CpGs at: ";
 	$j=0;
-	while ($sequency =~ m/CG/g) {
-	    #Off by 3 - one for zero correction - two for the two bp
-	    #Add one on either side - get 4 bp with CG in the middle
-	    $loco = pos($sequency)+$consist-3-1;
-	    $second = $loco+1+2;
-	    print "$chromey,$loco,$second,$id_name.$j\n";
-	    $j++;
-	}
-	#print "for a total of $j CpGs.\n";
+	for ($i=1; $i<6; $i++) {
+	    if ($i==1) {
+	    	$curprobe = $probe1;
+	    }
+	    if ($i==2) {
+		$curprobe = $probe2;
+	    }
+	    if ($i==3) {
+		$curprobe = $probe3;
+	    }
+	    if ($i==4) {
+		$curprobe = $probe4;
+	    }
+	    if ($i==5) {
+		$curprobe = $probe5;
+	    }
 
-
-
-
+	    $sequency = $sender->subseq(($curprobe-$begin),($curprobe-$begin+50));
+		
+	    while ($sequency =~ m/CG/g) {
+		#Off by 3 - one for zero correction - two for the two bp
+		#Add one on either side - get 4 bp with CG in the middle
+		$loco = pos($sequency)+$curprobe-3-1;
+		$second = $loco+1+2;
+		print "$chromey,$loco,$second,$id_name.$j\n";
+		$j++;
+	    }
+	$k=$k+$j;
+        }
+	
+	
+	
+	
 	$io = Bio::SeqIO->new(-format => "genbank", file => ">$id_name.gb");
 	$io->write_seq($sender);
 	
 	#print "$id_name has $cpgs CpGs.\n";
 	
 	$i++;
-	#$k=$k+$j;
+	
 
     }
 }
