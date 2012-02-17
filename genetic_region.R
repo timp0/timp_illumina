@@ -102,54 +102,48 @@ plotsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) 
   
 }
 
-plotdsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) {
+plotdsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region) {
   ##Determine how many probes per region
   numprobes=nrow(not_far)
   ##Setup that many plots
-  ##layout(rbind(matrix(1:(5*numprobes),nrow=numprobes,byrow=T), rep((numprobes*5+1),5), rep((numprobes*5+2),5)),heights=c(rep((0.5/numprobes),numprobes),0.3,0.2))
-  layout(c(1:3),heights=c(0.5,0.3,0.2))
-  par(mar=c(2,1,0,1),mgp=c(1.5,.5,0),oma=c(0,1,2,1))
-  
+  layout(rbind(matrix(1:(5*numprobes),nrow=numprobes,byrow=T), rep((numprobes*5+1),5), rep((numprobes*5+2),5)),heights=c(rep((0.7/numprobes),numprobes),0.15,0.15))
+  ##layout(c(1:3),heights=c(0.5,0.3,0.2))
+  par(mar=c(0,0,0,0),mgp=c(1.5,.5,0),oma=c(0,3,2,1))
+
   inorder=not_far[order(not_far$Start_loc),]
-  
+
   for (m in 1:numprobes) {
     probenum=as.numeric(row.names(inorder)[m])
-    
+
     for (n in 1:5) {
+      plot(0,0,ylim=c(0,7),xlim=c(-0,1),xlab="",type="n",axes="F")
+      box(lwd=2)
+      if (n==1) {
+        axis(side=2,lwd=2,at=c(0,2,4,6))
+        mtext(text=probes$Probe_ID[probenum],side=2,line=1.5)
+      }
+        
+      if (m==numprobes) {
+        axis(side=1,lwd=2,at=c(0,0.2,0.4,0.6,0.8,1.0),labels=c("0","0.2","0.4","0.6","0.8","1"))
+        mtext(text=class_stuff$nam[n*2],side=1,line=1.5)
+      }
+      
       
       rawnum<-as.numeric(avg_data[probenum,(sampy$Class==2*n)])
-      if (!exists("normy")) {
-        samp_n=rep(2*n,length(rawnum))
-        probe_n=rep(probenum,length(rawnum))
-        normy=rawnum
-      }
-      else {
-        normy=c(normy,rawnum)
-        samp_n=c(samp_n,rep(2*n,length(rawnum)))
-        probe_n=c(probe_n,rep(probenum, length(rawnum)))
-      }
-      
-      
-      
+      d_data<-density(rawnum,from=0, to=1)
+      lines(d_data,col=class_stuff$coloring[2*n])
+      rug(rawnum,side=1,col=class_stuff$coloring[2*n])
+
       rawnum<-as.numeric(avg_data[probenum,(sampy$Class==(2*n+1))])
-      if (!exists("tumy")) {
-        samp_t=rep((2*n+1),length(rawnum))
-        probe_t=rep(probenum,length(rawnum))
-        tumy=rawnum
-      }
-      else {
-        tumy=c(tumy,rawnum)
-        samp_t=c(samp_t,rep((2*n+1),length(rawnum)))
-        probe_t=c(probe_t,rep(probenum, length(rawnum)))
-      }
+      d_data<-density(rawnum,from=0, to=1)
+      lines(d_data,col=class_stuff$coloring[2*n+1])
+      rug(rawnum,side=3,col=class_stuff$coloring[2*n+1])
 
-
+        
     }
 
   }
-  
-  densityplot(~normy | samp_n)
-  
+  par(mar=c(0,1,3,1))
 }
   
 
@@ -249,7 +243,7 @@ plotClass <- function(probes,genes,avg_data,sampy,which,outname,controls=TRUE) {
     axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
     
     ##Plot title to graph
-    ##mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
+    mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
 
     ##Plot CpGDensity
     plotcpgdens(chromy,index[1],index[final_index])
@@ -345,8 +339,8 @@ plotfulldTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
   pdf(outname,width=11,height=8)
   
   ##Loop through all regions
-  ##for (i in unique(probes$Region)) {
-  for (i in 1) {
+  for (i in unique(probes$Region)) {
+
   
   ##Find probes which are in the same region - this was previously defined by perl in the probes$Region command
     not_far<-probes[(probes$Region==i),]
@@ -358,7 +352,7 @@ plotfulldTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
     index=(min(not_far$Start_loc)-1000):(max(not_far$Finish_loc)+1000)
     final_index=length(index)
 
-    plotdsamples(class_stuff,probes, avg_data,sampy,not_far,i,start)
+    plotdsamples(class_stuff,probes, avg_data,sampy,not_far,i)
 
     ##Plot title to graph
     mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
@@ -447,6 +441,8 @@ plotfullCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),cont
 
 ##START MAIN
 
+setwd("~/Big_Data/Illumina_Bead/Analysis/")
+
 ##Load libraries in
 library(BSgenome)
 library(BSgenome.Hsapiens.UCSC.hg18)
@@ -484,7 +480,7 @@ class_stuff=data.frame(nums=c(1,2,3,4,5,6,7,8,9,10,11),
 
 ##Plot new data all sets
 
-##plotfullTN(probes,genes,avg_data,sampy,"Movie/full_big.pdf")
+plotfulldTN(probes,genes,avg_data,sampy,"Movie/full_big_hist.pdf")
 ##Plot old data wilms/colon(all I have right now)
 
 ##plotfullTN(old_probes,genes,old_avg_data,old_sampy,"Movie/old_full_big.pdf",FALSE)
