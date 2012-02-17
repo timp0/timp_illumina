@@ -22,6 +22,7 @@ $k=0;
 
 #Take input from first line
 $garb=<>;
+$garb=0;
 #print $garb,"\n";
 
 #Take input
@@ -30,7 +31,9 @@ while (<>) {
     @fields = split /,/;
     #/Now read in all this stuff
     $id_name = $fields[5];
-    $chromey = $fields[0];
+    if ($fields[0] =~ /chr(\S+)/) {
+	$chromey = $1;
+    }
     $begin = $fields[1]-$span;
     $finish = $fields[2]+$span;
     $delta_m = $fields[3];
@@ -42,11 +45,12 @@ while (<>) {
     $CGI_dist = $fields[9];
     #$index = $11;
 
-    for ($i=0; $i<=(($#fields-10)/2); $i++) {
-	$probe[$i]=$fields[2*$i+11];
+    for ($i=0; $i<(($#fields-10)/2); $i++) {
+	$probes[$i]=$fields[2*$i+11];
 	$deltam[$i]=$fields[2*$i+12];
+	#print "$i,";
     }
-    print "$id_name $probe[0] \n";
+    #print "$id_name $probes[0] \n";
 
     
     
@@ -62,6 +66,9 @@ while (<>) {
     my $slice_adaptor = $registry->get_adaptor( 'Human', 'Core', 'Slice' );
     
     #Get Specific slice based on chromosome and start and end points from input - this includes +/- span
+
+    #print "$chromey, $begin, $finish \n";
+
     $slice = $slice_adaptor->fetch_by_region( 'chromosome', $chromey, $begin, $finish);
     
     
@@ -83,82 +90,67 @@ while (<>) {
     
 #Probes are 50bp long - Define Annotation for Probe(s)
     
-    for ($i=0; $i<=(($#probes); $i++) {
-	$feat = new Bio::SeqFeature::Generic(-start => ($probe[$i]-$begin),
-					     -end => ($probe[$i]-$begin+50),
+
+
+    for ($i=0; $i<=($#probes); $i++) {
+	$feat = new Bio::SeqFeature::Generic(-start => ($probes[$i]-$begin),
+					     -end => ($probes[$i]-$begin+50),
 					     -primary_tag => "CHARM_Probe_$i",
 					     -tag => {DeltaM => $deltam[$i], note => 'Geneious name: CHARM Probe #$i'});
 	$sender->add_SeqFeature($feat);
-	 }
-		
-	#Find any genes in the slice - mark them with annotations
-	$genes = $slice->get_all_Genes();
-	
-	while ( $gene = shift @{$genes} ) {
-	    $feat = new Bio::SeqFeature::Generic(-start => $gene->start,
-						 -end => $gene->end,
-						 -strand => $gene->strand,
-						 -primary_tag => 'gene',
-						 -tag => {gene => $gene->external_name});
-	    
-	    $sender->add_SeqFeature($feat);
-	}
-	
+
+
         #Extract sequence from most consistantly different probe
-	$sequency = $sender->subseq(($probe1-$begin),($probe1-$begin+50));
+	$sequency = $sender->subseq(($probes[$i]-$begin),($probes[$i]-$begin+50));
 	
-
 	
-	#stole this code:
-	#print "$id_name has CpGs at: ";
+	
+	
+	$il_start=$probes[$i];
+	$il_end=$probes[$i]+50;
+	
+	print "$CGI,$chromey,$il_start,$il_end,36.1,Homo sapiens,$id_name.$i\n";
+	
 	$j=0;
-	for ($i=1; $i<6; $i++) {
-	    if ($i==1) {
-	    	$curprobe = $probe1;      
-	    }
-	    if ($i==2) {
-		$curprobe = $probe2;
-	    }
-	    if ($i==3) {
-		$curprobe = $probe3;
-	    }
-	    if ($i==4) {
-		$curprobe = $probe4;
-	    }
-	    if ($i==5) {
-		$curprobe = $probe5;
-	    }
-	    
-	    $il_start=$curprobe;
-	    $il_end=$curprobe+50;
-	    
-	    print "$CGI,$chromey,$il_start,$il_end,36.1,Homo sapiens,$id_name.$i\n";
-
-	    $sequency = $sender->subseq(($curprobe-$begin),($curprobe-$begin+50));
-	    
-	    while ($sequency =~ m/CG/g) {
-		#Off by 3 - one for zero correction - two for the two bp
-		#Add one on either side - get 4 bp with CG in the middle
-		#$loco = pos($sequency)+$curprobe-3-1;
-		#$second = $loco+1+2;
-		#print "$chromey,$loco,$second,$id_name.$j\n";
-		$j++;
-	    }
+	while ($sequency =~ m/CG/g) {
+	    #Off by 3 - one for zero correction - two for the two bp
+	    #Add one on either side - get 4 bp with CG in the middle
+	    #$loco = pos($sequency)+$curprobe-3-1;
+	    #$second = $loco+1+2;
+	    #print "$chromey,$loco,$second,$id_name.$j\n";
+	    $j++;
+	}
 	$k=$k+$j;
-        }
-	
-	
-	
-	
-	$io = Bio::SeqIO->new(-format => "genbank", file => ">$id_name.gb");
-	$io->write_seq($sender);
-	
-	#print "$id_name has $cpgs CpGs.\n";
-	
-	$q++;
-	
+	 
+	 }
 
-    }
+	
+	 
+	
+	 #Find any genes in the slice - mark them with annotations
+	 $genes = $slice->get_all_Genes();
+	 
+	 while ( $gene = shift @{$genes} ) {
+	     $feat = new Bio::SeqFeature::Generic(-start => $gene->start,
+						  -end => $gene->end,
+						  -strand => $gene->strand,
+						  -primary_tag => 'gene',
+						  -tag => {gene => $gene->external_name});  
+	     $sender->add_SeqFeature($feat);
+	 }
+	 
+	 
+	 
+	 
+	 $io = Bio::SeqIO->new(-format => "genbank", file => ">$id_name.gb");
+	 $io->write_seq($sender);
+	 
+	 #print "$id_name has $cpgs CpGs.\n";
+	 
+	 $q++;
+	 
+	 
+       
 }
 
 print "For a total of $k CpGs.\n";

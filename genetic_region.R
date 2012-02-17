@@ -66,7 +66,7 @@ plotcontrols <- function(avg_data,sampy,not_far,region,start,end) {
   cntrl_info<-sampy[sampy$Class==1,]
   
   plot(0,0,ylim=c(0,1),xlim=c(start,end),"axes"=FALSE, type="n",xlab="",ylab="")
-  axis(side=4)
+  axis(side=4,at=c(0,0.5,1))
 
   for (j in 1:nrow(not_far)) {
     ##Plot control points
@@ -82,7 +82,8 @@ plotcontrols <- function(avg_data,sampy,not_far,region,start,end) {
     lines(lowess(loc+start,as.numeric(cntrl_data[j,])),col="red",lty=2)
   } 
   ##Plot label on axis as a tick on the top
-  axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
+  axis(side=3,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
+  axis(side=1)
 }
 
 plotsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) {
@@ -102,27 +103,41 @@ plotsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) 
   
 }
 
-plotdsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region) {
+plotdsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,highlight) {
   ##Determine how many probes per region
   numprobes=nrow(not_far)
-  ##Setup that many plots
-  layout(rbind(matrix(1:(5*numprobes),nrow=numprobes,byrow=T), rep((numprobes*5+1),5), rep((numprobes*5+2),5)),heights=c(rep((0.7/numprobes),numprobes),0.15,0.15))
-  ##layout(c(1:3),heights=c(0.5,0.3,0.2))
-  par(mar=c(0,0,0,0),mgp=c(1.5,.5,0),oma=c(0,3,2,1))
+  ##How many sample types
+  numsamp=4
 
+  ##Setup that many plots
+  
+  layout(rbind(matrix(1:(numsamp*numprobes),nrow=numprobes,byrow=T), rep((numprobes*numsamp+1),numsamp), rep((numprobes*numsamp+2),numsamp)),heights=c(rep((0.7/numprobes),numprobes),0.15,0.15))
+  ##layout(c(1:3),heights=c(0.5,0.3,0.2))
+  par(mar=c(0,0,0,0),mgp=c(1.5,.5,0),oma=c(1.5,3,2,3))
+  
   inorder=not_far[order(not_far$Start_loc),]
 
+  just=c(1,2,3,5)
+  
   for (m in 1:numprobes) {
     probenum=as.numeric(row.names(inorder)[m])
 
-    for (n in 1:5) {
+    for (n in just) {
       plot(0,0,ylim=c(0,7),xlim=c(-0,1),xlab="",type="n",axes="F")
       box(lwd=2)
       if (n==1) {
         axis(side=2,lwd=2,at=c(0,2,4,6))
-        mtext(text=probes$Probe_ID[probenum],side=2,line=1.5)
+        if (highlight[probenum]) {
+          mtext(text=probes$Probe_ID[probenum],side=2,line=1.5,col="red")
+        } else {
+          mtext(text=probes$Probe_ID[probenum],side=2,line=1.5,col="black")
+        }
       }
-        
+
+      if (n==tail(just,1)) {
+        mtext(text=probes$Illumina_ID[probenum],side=4,line=1.5)
+      }
+      
       if (m==numprobes) {
         axis(side=1,lwd=2,at=c(0,0.2,0.4,0.6,0.8,1.0),labels=c("0","0.2","0.4","0.6","0.8","1"))
         mtext(text=class_stuff$nam[n*2],side=1,line=1.5)
@@ -131,19 +146,19 @@ plotdsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region) {
       
       rawnum<-as.numeric(avg_data[probenum,(sampy$Class==2*n)])
       d_data<-density(rawnum,from=0, to=1)
-      lines(d_data,col=class_stuff$coloring[2*n])
+      lines(d_data,col=class_stuff$coloring[2*n],lwd=2)
       rug(rawnum,side=1,col=class_stuff$coloring[2*n])
 
       rawnum<-as.numeric(avg_data[probenum,(sampy$Class==(2*n+1))])
       d_data<-density(rawnum,from=0, to=1)
-      lines(d_data,col=class_stuff$coloring[2*n+1])
+      lines(d_data,col=class_stuff$coloring[2*n+1],lwd=2)
       rug(rawnum,side=3,col=class_stuff$coloring[2*n+1])
 
         
     }
 
   }
-  par(mar=c(0,1,3,1))
+  par(mar=c(0,1,4,1))
 }
   
 
@@ -333,13 +348,22 @@ plotfullTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
 }
 
 
-plotfulldTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
+plotsubdTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE,interest=logical(1)) {
   ##
   ##Start Plot
   pdf(outname,width=11,height=8)
+
+  regions=numeric()
+  
+  ##Identify good regions
+  if (!any(interest)) {
+    interest=logical(length(probes$Region))
+    interest[]=T
+  }
+
   
   ##Loop through all regions
-  for (i in unique(probes$Region)) {
+  for (i in unique(probes$Region[interest])) {
 
   
   ##Find probes which are in the same region - this was previously defined by perl in the probes$Region command
@@ -352,7 +376,7 @@ plotfulldTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
     index=(min(not_far$Start_loc)-1000):(max(not_far$Finish_loc)+1000)
     final_index=length(index)
 
-    plotdsamples(class_stuff,probes, avg_data,sampy,not_far,i)
+    plotdsamples(class_stuff,probes, avg_data,sampy,not_far,i,interest)
 
     ##Plot title to graph
     mtext(paste("ID:",i,"--",as.character(chromy),":",index[1],"-",index[final_index],sep=""),cex=2,side=3,outer=TRUE)
@@ -371,12 +395,13 @@ plotfulldTN <- function(probes,genes,avg_data,sampy,outname,controls=TRUE) {
       par(new=T)
       plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
     }
-    
+    par(mar=c(0,1,2,1))    
     ##Plot RefSeq Gene regions
     plotgenes(genes,chromy, index[1], index[final_index])
   }
   dev.off()
 }
+
 
 
 plotfullCHARM <- function(probes,genes,avg_data,sampy,outname,charm=c(1:10),controls=TRUE) {
@@ -480,11 +505,12 @@ class_stuff=data.frame(nums=c(1,2,3,4,5,6,7,8,9,10,11),
 
 ##Plot new data all sets
 
-plotfulldTN(probes,genes,avg_data,sampy,"Movie/full_big_hist.pdf")
+plotsubdTN(probes,genes,avg_data,sampy,"Movie/full_big_hist.pdf")
 ##Plot old data wilms/colon(all I have right now)
 
 ##plotfullTN(old_probes,genes,old_avg_data,old_sampy,"Movie/old_full_big.pdf",FALSE)
 ##Plot new normals against each other
+
 
 ##(probes,genes,avg_data,sampy,outname,charmloc,controls=TRUE) {
 ##plotfullCHARM(probes,genes,avg_data,sampy,"Movie/colon_charm.pdf",c(4:5))
@@ -496,3 +522,12 @@ plotfulldTN(probes,genes,avg_data,sampy,"Movie/full_big_hist.pdf")
 ##plotClass(probes,genes,avg_data,sampy,c(6:7),"Movie/lung_R.pdf")
 #plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(8:9),"ovary_R.pdf")
 #plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(10:11),"wilms_R.pdf")
+
+
+
+
+##Plot Hector Regions
+topprobes=read.csv("From_Hector_20methylationRegions.csv",stringsAsFactors=F)
+goody=is.element(probes$Illumina_ID,topprobes$TargetID)
+plotsubdTN(probes,genes,avg_data,sampy,"Movie/topprobes_hist.pdf",interest=goody)
+
