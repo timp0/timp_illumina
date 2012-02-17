@@ -17,7 +17,7 @@ $span=500;
 
 
 $i=1;
-$k=0;
+#$k=0;
 #Take input from first line
 while (<>) {
     if (/chr(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+)/)
@@ -99,15 +99,16 @@ while (<>) {
 	#my $cpgs = ($sequency =~ s/CG/CG/g);
 	
 	#stole this code:
-	print "$id_name has CpGs at: ";
+	#print "$id_name has CpGs at: ";
 	$j=0;
 	while ($sequency =~ m/CG/g) {
 	    #Off by 3 - one for zero correction - two for the two bp
 	    $loco = pos($sequency)+$consist-3;
-	    print "chr$chromey $loco, ";
+	    $second = $loco+1;
+	    print "chr$chromey:$loco-$second  $id_name.$j\n";
 	    $j++;
 	}
-	print "for a total of $j CpGs.\n";
+	#print "for a total of $j CpGs.\n";
 
 
 
@@ -118,12 +119,12 @@ while (<>) {
 	#print "$id_name has $cpgs CpGs.\n";
 	
 	$i++;
-	$k=$k+$j;
+	#$k=$k+$j;
 
     }
 }
 
-print "For a total of $k CpGs.\n";
+#print "For a total of $k CpGs.\n";
 
 
 
