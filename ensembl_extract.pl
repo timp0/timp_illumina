@@ -20,8 +20,9 @@ use warnings;
 $span=500;
 
 
+$i=1;
 
-#Take input from first argument
+#Take input from first line
 while (<>) {
     if (/chr(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+),(\S+)/)
     {
@@ -44,57 +45,45 @@ while (<>) {
 	    -host => 'ensembldb.ensembl.org',
 	    -user => 'anonymous'
 	    );
-	
-	
-	
+		
 	my $slice_adaptor = $registry->get_adaptor( 'Human', 'Core', 'Slice' );
 	
-	
+	#Get Specific slice based on chromosome and start and end points from input - this includes +/- span
 	$slice = $slice_adaptor->fetch_by_region( 'chromosome', $chromey, $begin, $finish);
 	
 	
 	
-	
-	
-	
+	#create new sequence variable from the slice
 	$sender = Bio::Seq->new(-seq => $slice->seq,
 				-display_id => $id_name,
+				-accession_number => sprintf("%03d",$i),
 				-desc => "Chromosome $chromey $begin-$finish DeltaM: $delta_m FDR: $fdr");
 	
+
+	#Define annotation for CHARM Region - this was the original start and end given in the line
 	$feat = new Bio::SeqFeature::Generic(-start => $span,
 					     -end => ($sender->length)-$span,
 					     -primary_tag => 'CHARM_Region',
 					     -tag => {note => 'Geneious name: CHARM Region'});
-
 	$sender->add_SeqFeature($feat);
 
-#Probes are 50bp long
+
+#Probes are 50bp long - Define Annotation for Probe most consistantly different and probe with largest difference
 	$feat = new Bio::SeqFeature::Generic(-start => ($consist-$begin),
 					     -end => ($consist-$begin+50),
 					     -primary_tag => 'CHARM_TProbe',
 					     -tag => {note => 'Geneious name: CHARM Consistant Probe'});
-
 	$sender->add_SeqFeature($feat);
 
 	$feat = new Bio::SeqFeature::Generic(-start => ($largest-$begin),
 					     -end => ($largest-$begin+50),
 					     -primary_tag => 'CHARM_DProbe',
 					     -tag => {note => 'Geneious name: CHARM Largest Probe'});
-
-	
 	$sender->add_SeqFeature($feat);
 	
-	$sequency = $sender->subseq(($consist-$begin),($consist-$begin+50));
-	
-	#print $sequency, "\n";
-
-	my $cpgs = ($sequency =~ s/CG/CG/g);
-
-
+		
+	#Find any genes in the slice - mark them with annotations
 	$genes = $slice->get_all_Genes();
-	
-	
-	
 	
 	while ( $gene = shift @{$genes} ) {
 	    $feat = new Bio::SeqFeature::Generic(-start => $gene->start,
@@ -106,11 +95,33 @@ while (<>) {
 	    $sender->add_SeqFeature($feat);
 	}
 	
+        #Extract sequence from most consistantly different probe
+	$sequency = $sender->subseq(($consist-$begin),($consist-$begin+50));
 	
+	#print $sequency, "\n";
+	#Previously used to count num CpGs
+	#my $cpgs = ($sequency =~ s/CG/CG/g);
+	
+	#stole this code:
+	print "$id_name has CpGs at: ";
+	$j=0;
+	while ($sequency =~ m/CG/g) {
+	    $loco = pos($sequency)+$consist;
+	    print "chr$chromey $loco,";
+	    $j++;
+	}
+	print "for a total of $j CpGs.\n";
+
+
+
+
 	$io = Bio::SeqIO->new(-format => "genbank", file => ">$id_name.gb");
 	$io->write_seq($sender);
 	
-	print "$id_name has $cpgs CpGs.\n";
+	#print "$id_name has $cpgs CpGs.\n";
+	
+	$i++;
+
 
     }
 }

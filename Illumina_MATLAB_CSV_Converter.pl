@@ -10,12 +10,10 @@ sub tumnorm {
   $other_id=$sample_break[1];
   if ($other_id =~ m/T/) {
     $other_id=~s/T//;
-    $class=$j*2;
     $note=1;
   }
   if ($other_id =~ m/N/) {
     $other_id=~s/N//;
-    $class=($j*2)+1;
     $note=-1;
   }
 }
@@ -80,20 +78,16 @@ for ($i=15; $i<$header_size; $i=$i+5) {
   #Remove trailing garbage
   $sample_name =~ s/@\S+//;
   #Also set a class:
-  #1 - Controls
-  #2 - Breast Tumor
-  #3 - Breast Normal
-  #4 - Colon Tumor
-  #5 - Colon Normal
-  #6 - Lung Tumor
-  #7 - Lung Normal
-  #8 - Ovary Tumor
-  #9 - Ovary Normal
-  #10 - Wilms Tumor
-  #11 - Wilms Normal
-  #12 - Cross Control
-  #13 - Other
-  #4 - Adenoma - Tumor *Other_ID=-2
+  #0 - Controls(Commercial)
+  #1 - Cross Controls
+  #2 - Breast 
+  #3 - Colon
+  #4 - Lung
+  #5 - Ovary
+  #6 - Wilms
+  #7 - Thyroid
+  #8 - Pancreas
+  # >0 is tumors, <0 normals
   #2 - DCIS (Breast) Tumor *Other_ID=-2
   #3 - DCIS (Breast) Normal *Other_ID=-2
   #3,4 - ColonSequencing Samp *Other_ID=-3
@@ -119,7 +113,7 @@ for ($i=15; $i<$header_size; $i=$i+5) {
   
   @sample_break = split(/_/,$sample_name);
   if ($sample_name =~ m/CIDR/) {
-    $class=1;
+    $class=0;
     $note=$sample_break[1];
     #Check for replicate
     if ($sample_name =~ m/0_/) {
@@ -129,51 +123,51 @@ for ($i=15; $i<$header_size; $i=$i+5) {
     }   
   }
   if ($sample_name =~ m/Half/) {
-    $class=1;
+    $class=0;
     $other_id=$sample_break[1];
     $other_id=~s/HalfM//;
     $note=50;
   }
   if ($sample_name =~ m/Cross/) {
-    $class=12;
+    $class=1;
     $other_id=$sample_break[2];
     $note=$sample_break[3];
   }
   if ($sample_name =~ m/Breast/) {
-    $j=1;
+    $class=2;
     &tumnorm;
   }
   if ($sample_name =~ m/DCIS/) {
-    $j=1;
+    $class=2;
     &tumnorm;
     $note=2*$note;
   }
   if ($sample_name =~ m/Colon/) {
-    $j=2;
+    $class=3;
     &tumnorm;
     if ($sample_name =~ m/ColonSeq/) {
       $note=3*$note;
     }
   }
   if ($sample_name =~ m/Adenoma/) {
-    $j=2;
+    $class=3;
     &tumnorm;
     $note=2*$note;
   }
   if ($sample_name =~ m/Lung/) {
-    $j=3;
+    $class=4;
     &tumnorm;
   }
   if ($sample_name =~ m/Ovary/) {
-    $j=4;
+    $class=5;
     &tumnorm;
   }
   if ($sample_name =~ m/Wilms/) {
-    $j=5;
+    $class=6;
     &tumnorm;
   }
   if ($sample_name =~ m/Thy/) {
-    $j=10;
+    $class=7;
     &tumnorm;
 
     if ($sample_name =~ m/ThyADN/) {
@@ -199,8 +193,7 @@ for ($i=15; $i<$header_size; $i=$i+5) {
     }
   }
   if ($sample_name =~ m/Pan/) {
-    print "$sample_name";
-    $j=11;
+    $class=8;
     &tumnorm;
     if ($sample_name =~ m/IPMN/) {
       $note=1*$note;
@@ -211,7 +204,7 @@ for ($i=15; $i<$header_size; $i=$i+5) {
     if ($sample_name =~ m/LCC/) {
       $note=3*$note;
     }
-    print ": $note\n";
+
   }
     
 
