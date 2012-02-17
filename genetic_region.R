@@ -12,7 +12,7 @@ plotucsc <-function(ucsc_isl,chromy,start,end){
       isl_start=in_ucscisl$chromStart[j]
       isl_end=in_ucscisl$chromEnd[j]
       
-      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0.05,0.05,0.15,0.15),density=10,col="blue",angle=45)
+      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0.0125,0.0125,0.05,0.05),density=10,col="blue",angle=45)
     }
   }
 }
@@ -28,7 +28,7 @@ plothmm <-function(hmm_isl, chromy, start, end){
       isl_start=in_hmmisl$start[j]
       isl_end=in_hmmisl$end[j]
       
-      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0,0,0.1,0.1),density=10,col="red",angle=-45)
+      polygon(c(isl_start,isl_end,isl_end,isl_start),c(0,0,0.0375,0.0375),density=10,col="red",angle=-45)
     }
   }
 }
@@ -85,18 +85,19 @@ plotcontrols <- function(avg_data,sampy,not_far,region,start,end) {
   axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
 }
 
-plotsamples <- function(class_stuff,avg_data,sampy,not_far,region,start) {
+plotsamples <- function(class_stuff,probes,avg_data,sampy,not_far,region,start) {
   for (j in 1:length(class_stuff$nums)) {
     data<-avg_data[(probes$Region==region),(sampy$Class==class_stuff$nums[j])]
     samp_info<-sampy[sampy$Class==class_stuff$nums[j],]
     ##cat(class_stuff$nums[j],"\n")
     num_samp=ncol(data)
     for (k in 1:nrow(not_far)) {
-      loc=jitter(rep(not_far$Start_loc[k]-start,num_samp),amount=50)     
+      loc=jitter(rep(not_far$Start_loc[k]-start,num_samp),amount=50)
       points(loc+start,data[k,],col=class_stuff$coloring[j])
+      ##cat("X: ",loc+start," Y: ",data[k,1],"\n")
     }
   }
-
+  
   legend("topright",class_stuff$nam,col=class_stuff$coloring,pch=1)
   
 }
@@ -147,7 +148,7 @@ plotClass <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,w
   
   
   ##Loop through all regions
-  for (i in 1:max(probes$Region)) {
+  for (i in unique(probes$Region)) {
     ##Find probes which are in the same region - this was previously defined by perl in the probes$Region command
     not_far<-probes[(probes$Region==i),]
     num_close<-nrow(not_far)
@@ -160,7 +161,7 @@ plotClass <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,w
     box()
     axis(2, at=seq(0,1,.2))
     ##Plot actual samples
-    plotsamples(class_stuff[which,],avg_data,sampy,not_far,i,index[1])
+    plotsamples(class_stuff[which,],probes,avg_data,sampy,not_far,i,index[1])
     ##Plot label on axis as a tick on the bottom
     axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
     
@@ -170,10 +171,10 @@ plotClass <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,w
     ##Plot CpGDensity
     plotcpgdens(chromy,index[1],index[final_index])
 
-    ##Stay on same plot
-    par(new=T)
     ##Plot Controls
     if (controls) {
+      ##Stay on same plot
+      par(new=T)
       plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
     }
     ##Plot Island locations
@@ -199,14 +200,15 @@ plotfullTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,
   
   
   ##Loop through all regions
-  for (i in probes$Region) {
-    ##Find probes which are in the same region - this was previously defined by perl in the probes$Region command
+  for (i in unique(probes$Region)) {
+  
+  ##Find probes which are in the same region - this was previously defined by perl in the probes$Region command
     not_far<-probes[(probes$Region==i),]
     num_close<-nrow(not_far)
     
     ##Set which chromosome and coordinates we are using for the region
     chromy <- paste("chr",not_far$Chromosome[1],sep="")
-    cat("Region ", i, "\n")
+    ##cat("Region ", i, "\n")
     index=(min(not_far$Start_loc)-1000):(max(not_far$Finish_loc)+1000)
     final_index=length(index)
 
@@ -220,11 +222,12 @@ plotfullTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,
       } else {
         plot(0,0,ylim=c(0,1.1),xlim=c(index[900],index[final_index-900]),ylab="",xlab="",type="n",xaxt="n",yaxt="n")
       }
-      if (any(sampy==(k*2))) {
+      if (any(sampy$Class==(k*2))) {
         ##Plot actual samples
-        plotsamples(class_stuff[(k*2):(k*2+1),],avg_data,sampy,not_far,i,index[1])
+        plotsamples(class_stuff[(k*2):(k*2+1),],probes,avg_data,sampy,not_far,i,index[1])
         ##Plot label on axis as a tick on the bottom
         axis(side=1,at=not_far$Start_loc,labels=not_far$Probe_ID, cex.axis=0.8)
+        ##axis(side=1)
       }
     }
     
@@ -234,16 +237,17 @@ plotfullTN <- function(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,
     ##Plot CpGDensity
     plotcpgdens(chromy,index[1],index[final_index])
 
-    ##Stay on same plot
-    par(new=T)
-    ##Plot Controls
-    if (controls) {
-      plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
-    }
     ##Plot Island locations
     plotucsc(ucsc_isl,chromy, index[1],index[final_index]) 
     plothmm(hmm_isl,chromy,index[1],index[final_index])
     legend("topleft",c("UCSC Islands", "HMM Islands"),col=c("blue", "red"),lty=1,lwd=2)
+
+    ##Plot Controls
+    if (controls) {
+      ##Stay on same plot
+      par(new=T)
+      plotcontrols(avg_data,sampy,not_far,i,index[1],index[final_index])
+    }
     
     ##Plot RefSeq Gene regions
     plotgenes(genes,chromy, index[1], index[final_index])
@@ -284,11 +288,11 @@ class_stuff=data.frame(nums=c(1,2,3,4,5,6,7,8,9,10,11),
 
 
 ##Plot new data all sets
-##plotfullTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,"Movie/full.pdf")
+plotfullTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,"Movie/full_bad.pdf")
 ##Plot old data wilms/colon(all I have right now)
 plotfullTN(old_probes,ucsc_isl,hmm_isl,genes,old_avg_data,old_sampy,class_stuff,"Movie/old_full.pdf",FALSE)
 ##Plot new normals against each other
-#plotClass(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(3,5,7,9,11),"Movie/normals_R.pdf")
+##plotClass(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(3,5,7,9,11),"Movie/normals_R.pdf")
 #plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(6:7),"lung_R.pdf")
 #plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(8:9),"ovary_R.pdf")
 #plotTN(probes,ucsc_isl,hmm_isl,genes,avg_data,sampy,class_stuff,c(10:11),"wilms_R.pdf")

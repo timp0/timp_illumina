@@ -103,9 +103,10 @@ while (<>) {
 	$j=0;
 	while ($sequency =~ m/CG/g) {
 	    #Off by 3 - one for zero correction - two for the two bp
-	    $loco = pos($sequency)+$consist-3;
-	    $second = $loco+1;
-	    print "chr$chromey:$loco-$second  $id_name.$j\n";
+	    #Add one on either side - get 4 bp with CG in the middle
+	    $loco = pos($sequency)+$consist-3-1;
+	    $second = $loco+1+2;
+	    print "$chromey,$loco,$second,$id_name.$j\n";
 	    $j++;
 	}
 	#print "for a total of $j CpGs.\n";
