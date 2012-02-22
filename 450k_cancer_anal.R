@@ -56,7 +56,7 @@ num.types=num.pheno*num.tis
 
 data.sum.stats=data.frame(tissue=character(num.types), pheno=character(num.types),
   num=numeric(num.types), avgs=list(num.types), med=list(num.types),
-  mads=list(num.types), vars=list(num.types))
+  mads=list(num.types), vars=list(num.types), stringsAsFactors=F)
 
 
 for (i in 1:num.tis) {
@@ -64,9 +64,9 @@ for (i in 1:num.tis) {
     idx=(i-1)*num.pheno+j
     per.tis.data=(pData(tis.data)$Tissue==t.levels[i]) & (pData(tis.data)$Phenotype==p.levels[j])    
     data.sum.stats$tissue[idx]=t.levels[i]
-    data.sum.stats$pheno[idx]=p.levels[i]
-    data.sum.stats$num=sum(per.tis.data)
-    if (data.sum.stats$num>0) {
+    data.sum.stats$pheno[idx]=p.levels[j]
+    data.sum.stats$num[idx]=sum(per.tis.data)
+    if (data.sum.stats$num[idx]>0) {
       beta=getBeta(tis.data[good.probes, per.tis.data])
       data.sum.stats$avgs[idx]=list(apply(beta, 1, mean))
       data.sum.stats$med[idx]=list(apply(beta, 1, median))
@@ -80,50 +80,69 @@ save(list="data.sum.stats", file="per_stats.rda")
 
 pdf("try1.pdf")
 
-##for (i in unique(pData(tis.data)$Tissue)) {
-for (i in c("breast")) {
+for (i in unique(pData(tis.data)$Tissue)) {
+##for (i in 1) {
+  for (j in 1:(num.pheno-1)) {
+    j.idx=(i-1)*num.pheno+j
+    if (data.sum.stats$num[j.idx]>0) {
+      for (k in j+1:num.pheno) {
+        k.idx=(i-1)*num.pheno+k
+        if (data.sum.stats$num[k.idx]>0) {
 
-  per.tis.data=tis.data[,(pData(tis.data)$Tissue==i)]
-  
-  for (j in 1:4) {
-    x.pheno.data=per.tis.data[,(pData(per.tis.data)$Phenotype==p.levels[j])]
-    x.num=dim(pData(x.pheno.data))[1]
-    if (x.num > 0) {
-      x.beta=getBeta(x.pheno.data)[good.probes,]
-      x.probe.mean=apply(x.beta, 1, mean)
-      x.probe.med=apply(x.beta, 1, median)
-      x.probe.mad=apply(x.beta, 1, mad)
-      x.probe.var=apply(x.beta, 1, var)
-      for (k in j:5) {
-        y.pheno.data=per.tis.data[,
-          (pData(per.tis.data)$Phenotype==p.levels[k])]
-        y.num=dim(pData(y.pheno.data))[1]
-        if (y.num > 0) {
-          y.beta=getBeta(y.pheno.data)[good.probes,]
-          y.probe.mean=apply(y.beta, 1, mean)
-          y.probe.med=apply(y.beta, 1, median)
-          y.probe.mad=apply(y.beta, 1, mad)
-          y.probe.var=apply(y.beta, 1, var)
-
-          h.mean=hexbin(x.probe.mean, y.probe.mean,
+          grid.newpage()
+          pushViewport(viewport(layout=grid.layout(2,2)))
+          
+          pushViewport(viewport(layout.pos.col=1, layout.pos.row=1))
+          h.mean=hexbin(data.sum.stats$avgs[[j.idx]],
+            data.sum.stats$avgs[[k.idx]],
             xlab=paste(p.levels[j],"mean", sep="."),
             ylab=paste(p.levels[k],"mean", sep="."))
-          plot(h.mean, main=i)
+          a=plot(h.mean, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+          pushHexport(a$plot.vp)
+          grid.xaxis(gp=gpar(fontsize=8))
+          grid.yaxis(gp=gpar(fontsize=8))
+          popViewport()
+          popViewport()
+          
+          pushViewport(viewport(layout.pos.col=2, layout.pos.row=1))
+          h.med=hexbin(data.sum.stats$med[[j.idx]],
+            data.sum.stats$med[[k.idx]],
+            xlab=paste(p.levels[j],"median", sep="."),
+            ylab=paste(p.levels[k],"median", sep="."))
+          a=plot(h.med, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+          pushHexport(a$plot.vp)
+          grid.xaxis(gp=gpar(fontsize=8))
+          grid.yaxis(gp=gpar(fontsize=8))
+          popViewport()
+          popViewport()
 
-          h.median=hexbin(x.probe.med, y.probe.med,
-            xlab=paste(p.levels[j],"med", sep="."),
-            ylab=paste(p.levels[k],"med", sep="."))
-          plot(h.median, main=i)
           
-          h.mad=hexbin(x.probe.mad, y.probe.mad,
+          pushViewport(viewport(layout.pos.col=1, layout.pos.row=2))
+          h.mads=hexbin(data.sum.stats$mads[[j.idx]],
+            data.sum.stats$mads[[k.idx]],
             xlab=paste(p.levels[j],"mad", sep="."),
             ylab=paste(p.levels[k],"mad", sep="."))
-          plot(h.mad, main=i)
+          a=plot(h.mads, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+          pushHexport(a$plot.vp)
+          grid.xaxis(gp=gpar(fontsize=8))
+          grid.yaxis(gp=gpar(fontsize=8))
+          popViewport()
+          popViewport()
+
           
-          h.dev=hexbin(x.probe.var, y.probe.var,
-            xlab=paste(p.levels[j],"mad", sep="."),
-            ylab=paste(p.levels[k],"mad", sep="."))
-          plot(h.dev, main=i)
+          pushViewport(viewport(layout.pos.col=2, layout.pos.row=2))
+          h.vars=hexbin(data.sum.stats$vars[[j.idx]],
+            data.sum.stats$vars[[k.idx]],
+            xlab=paste(p.levels[j],"var", sep="."),
+            ylab=paste(p.levels[k],"var", sep="."))
+          a=plot(h.vars, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+          pushHexport(a$plot.vp)
+          grid.xaxis(gp=gpar(fontsize=8))
+          grid.yaxis(gp=gpar(fontsize=8))
+          popViewport()
+          popViewport()
+
+          popViewport()
           
         }
       }
@@ -134,4 +153,3 @@ for (i in c("breast")) {
 }
 
 dev.off()
-
