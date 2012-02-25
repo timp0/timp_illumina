@@ -1,8 +1,7 @@
 # a comment - this is ignored
-Hector*
 .DS_Store
 ._*
 *~
 .\#*
 .Rhistory
-Chris*
+\#*
