@@ -48,12 +48,10 @@ ou_sim2 <- function (nsimul=10, m0=0.5, mu=0.5, on_theta=1, off_theta=0,on_sigma
   ##initialize array of methylation results
   runs=array(numeric(),dim=c(n,nsimul) )
 
-  ##if draw, then make to a pdf, if not to a png(png is smaller)
+  ##if draw, then make to a pdf, if not skip
   if (draw==T) {
     pdf(paste("Simul/", namey, ".pdf", sep=""), width=11, height=8)
-  } else {
-    png(paste("Simul/", namey, ".png", sep=""))
-  }
+  } 
 
   ##Initialize plot axes
   plot(t,t,type="n", ylim=c(0,1))

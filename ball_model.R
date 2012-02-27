@@ -128,7 +128,7 @@ breaking.spring.plot1 <- function(x, mu=0.5, to.a=0.1, num=20) {
   a.vals=seq(from=from.a, to=to.a, length=num)
 
   for (i in 1:length(a.vals)) {
-    png(paste("Ball/e", formatC(i, digits=0, width=4, flag=0), ".png", sep=""))
+    png(paste("Ball/e", formatC(i, digits=0, width=4, flag=0), ".png", sep=""), type="cairo")
 
     ##To plot parabolic ball and ball and spring
     layout(c(1,2), heights=c(0.2,0.8))
@@ -160,7 +160,7 @@ under_harmonic1 <- function (gamma=0.1) {
   x=-0.5*exp(-gamma*t)*cos( (1-gamma^2)^(1/2)*t)+0.5
 
   for (i in 1:length(t)) {
-    png(paste("Ball/u", i, ".png", sep=""))
+    png(paste("Ball/u", i, ".png", sep=""), type="cairo")
 
     spring_para_plot1(x[i])
     dev.off()
@@ -192,7 +192,8 @@ brown_harmonic1 <- function () {
   z=ou_sim2(tfinal=3e1, deltat=3e1/2e2,m0=0,on_theta=1/1.1, off_theta=1/1.1)  
 
   for (i in 1:length(z$t)) {
-    png( paste("Ball/b", formatC(i, digits=0, width=4, flag=0), ".png", sep=""))
+    png( paste("Ball/b", formatC(i, digits=0, width=4, flag=0), ".png", sep=""),
+        type="cairo")
 
     spring_para_plot1(z$simul[i,1])
     dev.off()
@@ -204,7 +205,7 @@ brown_harmonic2 <- function () {
   z=ou_sim2(tfinal=3e1, deltat=3e1/2e2,m0=0,on_theta=1/1.1, off_theta=1/1.1, mu=1,draw=T)  
 
   for (i in 1:length(z$t)) {
-    png( paste("Ball/b", i, ".png", sep=""))
+    png( paste("Ball/b", i, ".png", sep=""), type="cairo")
 
     spring_para_plot1(z$simul[i,1], mu=1)
     dev.off()
@@ -219,7 +220,8 @@ cancer.harmonic <- function () {
 
   
   for (i in 1:200) {
-    png( paste("Ball/cb", formatC(i, digits=0, width=4, flag=0), ".png", sep=""))    
+    png( paste("Ball/cb", formatC(i, digits=0, width=4, flag=0), ".png", sep=""),
+        type="cairo")    
     spring_para_plot1(z$simul[i,1], mu=0.5)
     dev.off()
   }
@@ -227,25 +229,24 @@ cancer.harmonic <- function () {
 
   for (i in 201:length(z$t)) {
     png( paste("Ball/ca", formatC((i-200), digits=0, width=4, flag=0, format='d')
-               , ".png",sep=""))
+               , ".png",sep=""), type="cairo")
     broken.spring.para.plot1(x=z$simul[i,1])
     dev.off()
   }
 }
 
 cancer.noise <- function () {
-  ##Simulating brownian harmonic oscillator with higher noise level
-
-
-  
+  ##Simulating brownian harmonic oscillator with higher noise level  
   z=ou_sim2(tfinal=3e1, deltat=3e1/2e2, m0=0, on_theta=1/1.1, off_theta=1/1.1,
     mu=0.5, draw=T, off_sigma=.2)
   
   ##Plot pngs for movie
   for (i in 1:400) {
-    png( paste("Ball/noi", formatC(i, digits=0, width=4, flag=0), ".png", sep=""))
+    ##Cairo allows us to access X11 backend w/o starting server
+    png( paste("Ball/noi", formatC(i, digits=0, width=4, flag=0), ".png", sep=""),
+        type="cairo")
     spring_para_plot1(z$simul[i,1], mu=0.5)
-    dev.off()
+    dev.off()                
   }
 
 }
