@@ -232,6 +232,26 @@ cancer.harmonic <- function () {
   }
 }
 
+cancer.noise <- function () {
+  ##Simulating brownian harmonic oscillator with higher noise level
+
+  z=ou_sim2(tfinal=3e1, deltat=3e1/2e2, m0=0, on_theta=1/1.1, off_theta=1/1.1,
+    mu=0.5, draw=F, off_sigma=.2)
+
+  ##Plot pngs for movie
+  for (i in 1:400) {
+    png( paste("Ball/noi", formatC(i, digits=0, width=4, flat=0), ".png", sep=""), type="cairo")
+    spring_para_plot(z$simul[i,1], mu=0.5)
+    dev.off()
+  }
+
+}
+  
+  
+  
+
+
+
 
 library(plotrix)
-source("~/Work/Analysis/Illumina/OU_model3.R")
+source("~/Code/timp_illumina/OU_model.R")
