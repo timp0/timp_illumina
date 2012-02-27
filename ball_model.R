@@ -212,6 +212,7 @@ brown_harmonic2 <- function () {
 }
 
 cancer.harmonic <- function () {
+  
   ##Simulating brownian harmonic oscillator - using O-E
   z=ou_sim2(tfinal=3e1, deltat=3e1/2e2,m0=0,on_theta=1/1.1, off_theta=0,
     mu=0.5,draw=T)  
@@ -235,13 +236,15 @@ cancer.harmonic <- function () {
 cancer.noise <- function () {
   ##Simulating brownian harmonic oscillator with higher noise level
 
-  z=ou_sim2(tfinal=3e1, deltat=3e1/2e2, m0=0, on_theta=1/1.1, off_theta=1/1.1,
-    mu=0.5, draw=F, off_sigma=.2)
 
+  
+  z=ou_sim2(tfinal=3e1, deltat=3e1/2e2, m0=0, on_theta=1/1.1, off_theta=1/1.1,
+    mu=0.5, draw=T, off_sigma=.2)
+  
   ##Plot pngs for movie
   for (i in 1:400) {
-    png( paste("Ball/noi", formatC(i, digits=0, width=4, flat=0), ".png", sep=""), type="cairo")
-    spring_para_plot(z$simul[i,1], mu=0.5)
+    png( paste("Ball/noi", formatC(i, digits=0, width=4, flag=0), ".png", sep=""))
+    spring_para_plot1(z$simul[i,1], mu=0.5)
     dev.off()
   }
 
