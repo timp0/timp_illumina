@@ -1,5 +1,5 @@
 ##Run single ornstein-uhlenbeck simulation
-ou_sim1 <- function (m0=1,mu=0.5, theta=1,sigma=.1,tfinal=10,deltat=0.05) {
+ou.sim.single <- function (m0=1,mu=0.5, theta=1,sigma=.1,tfinal=10,deltat=0.05) {
   ##Parameters - m0 is initial methylation, mu is the equilibrium spring ppoint
   ##theta is the magnitude of the restoring force, sigma is the magnitude of the noise
   ##tfinal is the end time of the simulation, deltat is the time step size
@@ -30,14 +30,16 @@ ou_sim1 <- function (m0=1,mu=0.5, theta=1,sigma=.1,tfinal=10,deltat=0.05) {
  
 }
 
-ou_sim2 <- function (nsimul=10, m0=0.5, mu=0.5, on_theta=1, off_theta=0,on_sigma=0.05, off_sigma=0.05,tfinal=20, deltat=0.05, namey="ou_time1", draw=F) {
+ou.sim.monte <- function (nsimul=10, m0=0.5, mu=0.5, on.theta=1, off.theta=0,on.sigma=0.05, off.sigma=0.05,tfinal=20,
+                          deltat=0.05, namey="ou.time1", draw=F) {
+
   ##Parameters - m0 is initial methylation, mu is the equilibrium spring ppoint
   ##theta is the magnitude of the restoring force, sigma is the magnitude of the noise
   ##tfinal is the end time of the simulation, deltat is the time step size
   ##nsimul is the number of times to run the simulation
-  ##on_theta is the force magnitude of the spring when the spring is working (before cancer)
-  ##off_theta is the force magnitude of the spring when the spring is broken (after cancer)
-  ##on_sigma and off_sigma are the noise mangtidues before and after cancer genesis event
+  ##on.theta is the force magnitude of the spring when the spring is working (before cancer)
+  ##off.theta is the force magnitude of the spring when the spring is broken (after cancer)
+  ##on.sigma and off.sigma are the noise mangtidues before and after cancer genesis event
   ##namey is the name of the output file
   ##draw is a boolean asking whether to draw the results to a pdf or png
 
@@ -49,13 +51,14 @@ ou_sim2 <- function (nsimul=10, m0=0.5, mu=0.5, on_theta=1, off_theta=0,on_sigma
   runs=array(numeric(),dim=c(n,nsimul) )
 
   ##if draw, then make to a pdf, if not skip
-  if (draw==T) {
+  if (draw) {
     pdf(paste("Simul/", namey, ".pdf", sep=""), width=11, height=8)
-  } 
+ 
+    ##Initialize plot axes
+    plot(t,t,type="n", ylim=c(0,1))
+  }
 
-  ##Initialize plot axes
-  plot(t,t,type="n", ylim=c(0,1))
-
+    
   ##loop through the number of simulations to run
   for (j in 1:nsimul) {
     ##initialize methylation result
@@ -66,8 +69,8 @@ ou_sim2 <- function (nsimul=10, m0=0.5, mu=0.5, on_theta=1, off_theta=0,on_sigma
     ##Iterate through values
     for (i in 2:length(y)) {
       ##determine if we are before or after cancer genesis event
-      theta=ifelse(t[i]>0,off_theta,on_theta)
-      sigma=ifelse(t[i]>0,off_sigma,on_sigma)
+      theta=ifelse(t[i]>0,off.theta,on.theta)
+      sigma=ifelse(t[i]>0,off.sigma,on.sigma)
       ##Euler-Maruyama
       y[i]=y[i-1]+deltat*(theta*(mu-y[i-1] ) )+sigma*sqrt(deltat)*rnorm(1);
       ##Methylation can't be greater than 1 or less than 0 - this may be a naive way to do it
@@ -76,23 +79,27 @@ ou_sim2 <- function (nsimul=10, m0=0.5, mu=0.5, on_theta=1, off_theta=0,on_sigma
     }
     ##Assign the results of iteration to one of the array
     runs[,j]=y
-    ##Plot
-    lines(t, y, type="l", lwd=1, col="red")
+    
+    if (draw) {
+      ##Plot
+      lines(t, y, type="l", lwd=1, col="red")
+    }
   }
 
-
-  ##Mark vertical lines at cancer genesis event and potential location of adenoma time point?
-  abline(v=0, lty=2, col="green", lwd=1)
-  abline(v=5, lty=2, col="blue", lwd=1)
+  if (draw) {
+    ##Mark vertical lines at cancer genesis event and potential location of adenoma time point?
+    abline(v=0, lty=2, col="green", lwd=1)
+    abline(v=5, lty=2, col="blue", lwd=1)
+  }
   
   ##legend("topright",c("Methylated", "Unmethylated"),col=c("green", "red"),lty=1,lwd=1) 
-  dev.off()
+
   data=list(t=t, simul=runs)
   return(data)
 
 }
 
-ou_bar<-function(norms, nsimul=10, off_theta=0, namey="progbar", on_sigma=0.05, off_sigma=0.05, on_theta=1) {
+ou.bar<-function(norms, nsimul=10, off.theta=0, namey="progbar", on.sigma=0.05, off.sigma=0.05, on.theta=1) {
 #Make boxplot of results at different time points - for real data comparison
   numprobes=length(norms)
   
@@ -102,7 +109,8 @@ ou_bar<-function(norms, nsimul=10, off_theta=0, namey="progbar", on_sigma=0.05, 
 
 
   for (i in 1:length(norms)) {
-    res=ou_sim2(mu=norms[i], m0=norms[i], nsimul=nsimul, off_theta=off_theta, on_sigma=on_sigma, tfinal=30, off_sigma=off_sigma, on_theta=on_theta, namey="p")
+    res=ou.sim.monte(mu=norms[i], m0=norms[i], nsimul=nsimul, off.theta=off.theta, on.sigma=on.sigma, tfinal=30,
+      off.sigma=off.sigma, on.theta=on.theta, namey="p")
 
     normy[,i]=res$simul[400,]
     ady[,i]=res$simul[res$t==3,]
@@ -115,17 +123,18 @@ ou_bar<-function(norms, nsimul=10, off_theta=0, namey="progbar", on_sigma=0.05, 
   box
 }
   
-ou_density<- function(mu=0.5, off_theta=0, namey="progress", on_sigma=0.05, off_sigma=0.05, on_theta=1) {
+ou.density<- function(mu=0.5, off.theta=0, namey="progress", on.sigma=0.05,
+                      off.sigma=0.05, on.theta=1) {
 ##Make density plot of results at different time points
 
   ##Do only 10 simulations to make the traces - otherwise its too dense and crowded.
-  res=ou_sim2(mu=mu, off_theta=off_theta, nsimul=10, m0=mu,
-    on_sigma=on_sigma, off_sigma=off_sigma, on_theta=on_theta,
-    namey=paste(namey, "trace",sep="_"), draw=T)
+  res=ou.sim.monte(mu=mu, off.theta=off.theta, nsimul=10, m0=mu,
+    on.sigma=on.sigma, off.sigma=off.sigma, on.theta=on.theta,
+    namey=paste(namey, "trace",sep="."), draw=T)
 
   ##Do 100 simulations to make the density plots
-  res=ou_sim2(mu=mu, m0=mu, nsimul=100,
-    off_theta=off_theta, on_sigma=on_sigma, on_theta=on_theta,
+  res=ou.sim.monte(mu=mu, m0=mu, nsimul=100,
+    off.theta=off.theta, on.sigma=on.sigma, on.theta=on.theta,
     tfinal=30,namey="p")
 
   ##Normal values
@@ -151,6 +160,46 @@ ou_density<- function(mu=0.5, off_theta=0, namey="progress", on_sigma=0.05, off_
   dev.off()
 
 }
+
+
+ou.hex <- function (mu=0.5, off.theta=0, off.sigma=0.05, on.sigma=0.05,
+                    on.theta=1, namey="monte", nsimul=1e2,
+                    loc=c(0.25, 0.5, 0.4, 0.4)) {
+  require(hexbin)
+  require(reshape)
+  
+  ##this function is designed to do ~1e3 runs of the oe simulation, and spit out a hexbin
+  ##density plot of the result
+
+  ##Do 100 simulations to make the density plots
+  res=ou.sim.monte(mu=mu, m0=mu, nsimul=nsimul,
+    off.theta=off.theta, on.sigma=on.sigma, on.theta=on.theta,
+    tfinal=30)
+
+  sim.vals=res$simul
+  rownames(sim.vals)=res$t
+  xy=melt(sim.vals)
+
+  xbnds=extendrange(xy$X1)
+  ybnds=c(-0.05, 1.05)
+  
+  meth.hex=hexbin(xy$X1, xy$value, xbnds=xbnds, ybnds=ybnds)
+
+  pushViewport(vp=viewport(x = loc[1], y=loc[2],
+                 height = loc[3], width = loc[4],
+                 xscale=xbnds, yscale=ybnds))
+  
+
+  grid.hexagons(meth.hex)
+  grid.rect()
+  grid.yaxis()
+  ##plot(meth.hex, newpage=F)
+  popViewport()
+
+
+  
+}
+
 
 
 

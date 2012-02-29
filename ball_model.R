@@ -1,4 +1,4 @@
-ball_plot1 <- function (m=0,mu=0.5, a=4) {
+ball.plot <- function (m=0,mu=0.5, a=4) {
   ##Make ball in parabolic potential well plot, using m as location, and mu=0.5 as the bottom of potential well
   ##radius of circle is 0.05
   r=0.05
@@ -18,7 +18,7 @@ ball_plot1 <- function (m=0,mu=0.5, a=4) {
   x2=x+r*cos(theta)
   y2=a*(x-mu)^2+r*sin(theta)
   l=length(x2)
-  #z=ou_sim2(deltat=0.25)
+  #z=ou.sim.monte(deltat=0.25)
   
   #library(plotrix)
 
@@ -35,7 +35,7 @@ ball_plot1 <- function (m=0,mu=0.5, a=4) {
   draw.circle(m, a*(m-mu)^2, r, col="red")       
 }
 
-spring_plot1 <- function(m=0,mu=0.5) {  
+spring.plot <- function(m=0,mu=0.5) {  
   ##Draw a spring with a ball attached to the end of it - equilibrium of spring is 
   
   ##Spring attachment point is -(1.2-mu)
@@ -52,11 +52,11 @@ spring_plot1 <- function(m=0,mu=0.5) {
   lines(c(e, e), c(-1e3, 1e3), lwd=2)
 
   ##Make spring, it has 20 segments, 
-  spring_x=seq(from=e+s, to=m-s, length=20)
-  spring_y=c(0,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,0)
+  spring.x=seq(from=e+s, to=m-s, length=20)
+  spring.y=c(0,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,h,-h,0)
 
   ##Draw spring
-  lines(spring_x, spring_y, lwd=2)
+  lines(spring.x, spring.y, lwd=2)
   ##Draw line that connects to ball
   lines(c(m-s, m), c(0,0), lwd=2)
   ##Draw ball
@@ -71,7 +71,7 @@ spring_plot1 <- function(m=0,mu=0.5) {
 
 
 
-broken.spring.plot1 <- function(m=0,mu=0.5) {  
+broken.spring.plot <- function(m=0,mu=0.5) {  
   ##Draw a spring with a ball attached to the end of it - equilibrium of spring is 
   
   ##Spring attachment point is -(1.2-mu)
@@ -111,7 +111,7 @@ broken.spring.plot1 <- function(m=0,mu=0.5) {
 
 
 
-spring_para_plot1 <- function(x=0,mu=0.5) {
+spring.para.plot <- function(x=0,mu=0.5) {
 ##To plot parabolic ball and ball and spring
   layout(c(1,2), heights=c(0.2,0.8))
   par(mar=c(1,0.2,1,0.2))
@@ -119,11 +119,11 @@ spring_para_plot1 <- function(x=0,mu=0.5) {
   ##Max value of potential  
   a=1/max(c(mu^2, (1-mu)^2))
 
-  spring_plot1(m=x,mu=mu)
-  ball_plot1(m=x,mu=mu, a=a)
+  spring.plot(m=x,mu=mu)
+  ball.plot(m=x,mu=mu, a=a)
 }
 
-breaking.spring.plot1 <- function(x, mu=0.5, to.a=0.1, num=20) {
+breaking.spring.plot <- function(x, mu=0.5, to.a=0.1, num=20) {
   from.a=1/max(c(mu^2, (1-mu)^2))
   a.vals=seq(from=from.a, to=to.a, length=num)
 
@@ -134,25 +134,25 @@ breaking.spring.plot1 <- function(x, mu=0.5, to.a=0.1, num=20) {
     layout(c(1,2), heights=c(0.2,0.8))
     par(mar=c(1,0.2,1,0.2))
 
-    broken.spring.plot1(m=x, mu=mu)
-    ball_plot1(m=x,mu=mu, a=a.vals[i])
+    broken.spring.plot(m=x, mu=mu)
+    ball.plot(m=x,mu=mu, a=a.vals[i])
     dev.off()
   }
 
 }
 
-broken.spring.para.plot1 <- function(x=0, mu=0.5, a=.1) {
+broken.spring.para.plot <- function(x=0, mu=0.5, a=.1) {
 ##To plot parabolic ball and ball and spring
   layout(c(1,2), heights=c(0.2,0.8))
   par(mar=c(1,0.2,1,0.2))
   
-  broken.spring.plot1(m=x,mu=mu)
-  ball_plot1(m=x,mu=mu, a=a)
+  broken.spring.plot(m=x,mu=mu)
+  ball.plot(m=x,mu=mu, a=a)
 
 }
 
   
-under_harmonic1 <- function (gamma=0.1) {
+under.harmonic <- function (gamma=0.1) {
 ##Simulating underdamped harmonic oscillator
 
   t=seq(from=0, to=3e1, length=2e2)
@@ -162,13 +162,13 @@ under_harmonic1 <- function (gamma=0.1) {
   for (i in 1:length(t)) {
     png(paste("Ball/u", i, ".png", sep=""), type="cairo")
 
-    spring_para_plot1(x[i])
+    spring.para.plot(x[i])
     dev.off()
   }
 
 }
 
-over_harmonic1 <- function () {
+over.harmonic <- function () {
 ##Simulating overdamped harmonic oscillator
   gamma=1.1
   c1=-(gamma - (gamma^2 -1)^(1/2))/(4*(gamma^2-1)^(1/2))
@@ -181,33 +181,33 @@ over_harmonic1 <- function () {
   for (i in 1:length(t)) {
     png( paste("Ball/o", i, ".png", sep=""))
 
-    spring_para_plot1(x[i])
+    spring.para.plot1(x[i])
     dev.off()
   }
 
 }
 
-brown_harmonic1 <- function () {
+brown.harmonic <- function () {
   ##Simulating brownian harmonic oscillator
-  z=ou_sim2(tfinal=3e1, deltat=3e1/2e2,m0=0,on_theta=1/1.1, off_theta=1/1.1)  
+  z=ou.sim.monte(tfinal=3e1, deltat=3e1/2e2,m0=0,on.theta=1/1.1, off.theta=1/1.1)  
 
   for (i in 1:length(z$t)) {
     png( paste("Ball/b", formatC(i, digits=0, width=4, flag=0), ".png", sep=""),
         type="cairo")
 
-    spring_para_plot1(z$simul[i,1])
+    spring.para.plot(z$simul[i,1])
     dev.off()
   }
 }
 
-brown_harmonic2 <- function () {
+brown.harmonic.wall <- function () {
   ##Simulating brownian harmonic oscillator - using O-E
-  z=ou_sim2(tfinal=3e1, deltat=3e1/2e2,m0=0,on_theta=1/1.1, off_theta=1/1.1, mu=1,draw=T)  
+  z=ou.sim.monte(tfinal=3e1, deltat=3e1/2e2,m0=0,on.theta=1/1.1, off.theta=1/1.1, mu=1,draw=T)  
 
   for (i in 1:length(z$t)) {
     png( paste("Ball/b", i, ".png", sep=""), type="cairo")
 
-    spring_para_plot1(z$simul[i,1], mu=1)
+    spring.para.plot(z$simul[i,1], mu=1)
     dev.off()
   }
 }
@@ -215,37 +215,37 @@ brown_harmonic2 <- function () {
 cancer.harmonic <- function () {
   
   ##Simulating brownian harmonic oscillator - using O-E
-  z=ou_sim2(tfinal=3e1, deltat=3e1/2e2,m0=0,on_theta=1/1.1, off_theta=0,
+  z=ou.sim.monte(tfinal=3e1, deltat=3e1/2e2,m0=0,on.theta=1/1.1, off.theta=0,
     mu=0.5,draw=T)  
 
   
   for (i in 1:200) {
     png( paste("Ball/cb", formatC(i, digits=0, width=4, flag=0), ".png", sep=""),
         type="cairo")    
-    spring_para_plot1(z$simul[i,1], mu=0.5)
+    spring.para.plot(z$simul[i,1], mu=0.5)
     dev.off()
   }
-  breaking.spring.plot1(z$simul[200,1], num=20)
+  breaking.spring.plot(z$simul[200,1], num=20)
 
   for (i in 201:length(z$t)) {
     png( paste("Ball/ca", formatC((i-200), digits=0, width=4, flag=0, format='d')
                , ".png",sep=""), type="cairo")
-    broken.spring.para.plot1(x=z$simul[i,1])
+    broken.spring.para.plot(x=z$simul[i,1])
     dev.off()
   }
 }
 
 cancer.noise <- function () {
   ##Simulating brownian harmonic oscillator with higher noise level  
-  z=ou_sim2(tfinal=3e1, deltat=3e1/2e2, m0=0, on_theta=1/1.1, off_theta=1/1.1,
-    mu=0.5, draw=T, off_sigma=.2)
+  z=ou.sim.monte(tfinal=3e1, deltat=3e1/2e2, m0=0, on.theta=1/1.1, off.theta=1/1.1,
+    mu=0.5, draw=T, off.sigma=.2)
   
   ##Plot pngs for movie
   for (i in 1:400) {
     ##Cairo allows us to access X11 backend w/o starting server
     png( paste("Ball/noi", formatC(i, digits=0, width=4, flag=0), ".png", sep=""),
         type="cairo")
-    spring_para_plot1(z$simul[i,1], mu=0.5)
+    spring.para.plot(z$simul[i,1], mu=0.5)
     dev.off()                
   }
 
