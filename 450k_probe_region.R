@@ -173,7 +173,7 @@ values(gprobes)$probe.seq=ill$pattern
 ##Get DMR info
 load("~/Data/Genetics/092011_Capture/dmr_cap.rda")
 
-cdmrs=updateObject(cdmrs)
+##cdmrs=updateObject(cdmrs)
 z=as.matrix(findOverlaps(gprobes, cdmrs.hg19))
 
 ##DMR index and boolean init
@@ -183,7 +183,7 @@ values(gprobes)$cdmr.idx=numeric(length(gprobes))
 values(gprobes)$cdmr.boo[z[,1]]=T
 values(gprobes)$cdmr.idx[z[,1]]=z[,2]
 
-tdmrs=updateObject(tdmrs)
+##tdmrs=updateObject(tdmrs)
 z=as.matrix(findOverlaps(gprobes, tdmrs.hg19))
 
 ##tdmrs index and boolean init
@@ -193,7 +193,7 @@ values(gprobes)$tdmr.idx=numeric(length(gprobes))
 values(gprobes)$tdmr.boo[z[,1]]=T
 values(gprobes)$tdmr.idx[z[,1]]=z[,2]
 
-rdmrs=updateObject(rdmrs)
+##rdmrs=updateObject(rdmrs)
 z=as.matrix(findOverlaps(gprobes, rdmrs.hg19))
 
 ##DMR index and boolean init

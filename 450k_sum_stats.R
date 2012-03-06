@@ -33,7 +33,25 @@ tis.pheno <- function(data.anno) {
 
   return(freqs)
 }
+
+var.ftest <- function(grp1, grp2) {
+  ##This function applies an F-test to variance
+
+  grp1.beta=getBeta(grp1)
+  grp2.beta=getBeta(grp2)
+
+  n.probes=dim(grp1.beta)[1]
   
+  f.p.val=numeric(n.probes)
+  
+  for (i in 1:dim(grp1.beta)[1]) {
+    f.p.val[i]=var.test(grp1.beta[1,], grp2.beta[1,])$p.value
+  }
+
+  return(f.p.val)
+}
+
+
 CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   ##This function is designed to spit out a plot of the methylation for a given CpG
   ##plotting the different tissues/phenotypes separately
