@@ -54,6 +54,8 @@ values(remap.probe)$snp.name=character(length(remap.probe))
 values(remap.probe)$snp.dist=numeric(length(remap.probe))
 values(remap.probe)$snp.het=numeric(length(remap.probe))
 
+##Added to distinguish probes w/o snps - their distance to snp is -1 by default
+values(remap.probe)$snp.dist=-1
 
 ##Match REMAP.PROBE to SNP
 ##By using first, get the one closest to the 3' end

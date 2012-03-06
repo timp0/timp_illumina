@@ -148,13 +148,19 @@ load("~/Data/Infinium/121311_analysis/probe_obj_final.rda")
 
 ##Add something indexing gprobes vs actual data order
 values(gprobes)$minfi.idx=match(values(gprobes)$name,
-                 rownames(getM(tis.data[,1])))
+                 rownames(getM(RGset[,1])))
 
 ##Keep just probes with no SNPs and no multihyb
 good.probes=values(gprobes)$minfi.idx[!((values(gprobes)$sbe.snp.boo)|
   (values(gprobes)$boo.snps)|(!values(gprobes)$single.hyb))]
 
 
-tis.data=preprocessMinfi(RGset[good.probes,tis.samp])
+tis.samp=(pData(RGset)$Tissue %in% c("colon", "lung", "breast", "thyroid","kidney", "pancreas"))
+
+
+tis.data=preprocessIllumina(RGset[,tis.samp])
+
+
+##For loaf
 
 

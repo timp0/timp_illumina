@@ -123,19 +123,16 @@ ou.bar<-function(norms, nsimul=10, off.theta=0, namey="progbar", on.sigma=0.05, 
   box
 }
   
-ou.density<- function(mu=0.5, off.theta=0, namey="progress", on.sigma=0.05,
-                      off.sigma=0.05, on.theta=1) {
-##Make density plot of results at different time points
-
-  ##Do only 10 simulations to make the traces - otherwise its too dense and crowded.
-  res=ou.sim.monte(mu=mu, off.theta=off.theta, nsimul=10, m0=mu,
-    on.sigma=on.sigma, off.sigma=off.sigma, on.theta=on.theta,
-    namey=paste(namey, "trace",sep="."), draw=T)
+ou.density <- function(mu=0.5, off.theta=0, off.sigma=0.05, on.sigma=0.05,
+                       on.theta=1, nsimul=1e3,
+                       panel=F,loc=c(0.25, 0.25, 0.4, 0.4)) {
+  
+  ##Make density plot of results at different time points
 
   ##Do 100 simulations to make the density plots
-  res=ou.sim.monte(mu=mu, m0=mu, nsimul=100,
+  res=ou.sim.monte(mu=mu, m0=mu, nsimul=nsimul,
     off.theta=off.theta, on.sigma=on.sigma, on.theta=on.theta,
-    tfinal=30,namey="p")
+    tfinal=30)
 
   ##Normal values
   normy=res$simul[400,]
@@ -149,21 +146,38 @@ ou.density<- function(mu=0.5, off.theta=0, namey="progress", on.sigma=0.05,
   carcy=res$simul[res$t==30,]
   carcinoma=density(carcy, from=0, to=1)
 
-  pdf(paste("Simul/", namey, ".pdf" , sep=""), width=8, height=8)
-  par(mfrow=c(2,2))
-  plot(normal, type="l", col="green", lwd=2, xlim=c(0, 1))
-  rug(normy, side=1,col="green")
-  lines(adenoma, col="red", lwd=2)
-  rug(ady, side=1, col="red")
-  lines(carcinoma, col="blue", lwd=2)
-  rug(carcy, side=1,col="blue")
-  dev.off()
+  if (panel) {
+    vp=viewport(x = loc[1], y=loc[2], height = loc[3], width = loc[4],
+      xscale=c(-0.05, 1.05), yscale=extendrange(c(carcinoma$y, adenoma$y, normal$y)))
+    pushViewport(vp)
 
+    grid.lines(normal$x, normal$y, gp=gpar(col="purple", lwd=2), default.units="native")
+    panel.rug(normy, col="purple")
+    grid.lines(adenoma$x, adenoma$y, gp=gpar(col="green", lwd=2), default.units="native")
+    panel.rug(ady, col="green")
+    grid.lines(carcinoma$x, carcinoma$y, gp=gpar(col="orange", lwd=2), default.units="native")
+    panel.rug(normy, col="orange")
+
+
+    grid.rect()
+    grid.yaxis()
+    grid.xaxis()
+
+    popViewport()
+               
+  } else {
+    plot(normal, type="l", col="green", lwd=2, xlim=c(0, 1))
+    rug(normy, side=1,col="green")
+    lines(adenoma, col="red", lwd=2)
+    rug(ady, side=1, col="red")
+    lines(carcinoma, col="blue", lwd=2)
+    rug(carcy, side=1,col="blue")
+  }
 }
 
 
 ou.hex <- function (mu=0.5, off.theta=0, off.sigma=0.05, on.sigma=0.05,
-                    on.theta=1, namey="monte", nsimul=1e2,
+                    on.theta=1, namey="monte", nsimul=1e2, red=F,
                     loc=c(0.25, 0.5, 0.4, 0.4)) {
   require(hexbin)
   require(reshape)
@@ -176,6 +190,7 @@ ou.hex <- function (mu=0.5, off.theta=0, off.sigma=0.05, on.sigma=0.05,
     off.theta=off.theta, on.sigma=on.sigma, on.theta=on.theta,
     tfinal=30)
 
+  
   sim.vals=res$simul
   rownames(sim.vals)=res$t
   xy=melt(sim.vals)
@@ -191,6 +206,23 @@ ou.hex <- function (mu=0.5, off.theta=0, off.sigma=0.05, on.sigma=0.05,
   
 
   grid.hexagons(meth.hex)
+
+  ##Red line traces
+  if (red) {
+    red.res=ou.sim.monte(mu=mu, m0=mu, nsimul=10,
+      off.theta=off.theta, on.sigma=on.sigma, on.theta=on.theta,
+      tfinal=30)    
+    for (i in 1:10) {
+      grid.lines(red.res$t, red.res$simul[,i], gp=gpar(col="#FF0000BF", lwd=0.4),
+                 default.units="native")
+    }
+  }
+  
+  ##Mark vertical lines at cancer genesis event and potential location of adenoma time point?
+  panel.abline(v=-10, lty=2, col="purple", lwd=2)
+  panel.abline(v=3, lty=2, col="green", lwd=2)
+  panel.abline(v=30, lty=2, col="orange", lwd=2)
+  
   grid.rect()
   grid.yaxis()
   ##plot(meth.hex, newpage=F)

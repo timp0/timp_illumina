@@ -65,14 +65,18 @@ tis.beta=getBeta(tis.data)
 ##Number of samples
 samp.tab=tis.pheno(pData(tis.data))
                                    
-probe.tests=numeric()              
+probe.meds=numeric()              
                                    
-##Do per probe tests for each tissue
 ##Do per probe tests for each tissue
 for (i in 1:dim(samp.tab)[1]) {
 
   norm.stat=per.stats(tis.data, tissue=rownames(samp.tab)[i], pheno="normal")
 
+  probe.meds=cbind(probe.meds, norm.stat$meds)
+
+  colnames(probe.meds)[i]=rownames(samp.tab)[i]
+
+}
   
   
   
