@@ -45,7 +45,7 @@ var.ftest <- function(grp1, grp2) {
   f.p.val=numeric(n.probes)
   
   for (i in 1:dim(grp1.beta)[1]) {
-    f.p.val[i]=var.test(grp1.beta[1,], grp2.beta[1,])$p.value
+    f.p.val[i]=var.test(grp1.beta[i,], grp2.beta[i,])$p.value
   }
 
   return(f.p.val)

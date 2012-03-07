@@ -80,7 +80,6 @@ gprobes=GRanges(seqname=paste("chr", ill$CHR, sep=""),
 
 values(gprobes)$name=ill$Name
 values(gprobes)$pidx=ill$pidx
-values(gprobes)$type=ill$Infinium_Design_Type
 
 ##Booleans from probe design origins
 values(gprobes)$random.loci=!is.na(ill$Random_Loci)

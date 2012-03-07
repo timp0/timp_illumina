@@ -22,7 +22,8 @@ load("remap_f.rda")
 
 ##Make Single base extension GRanges
 sbe=flank(remap.probe,1)
-
+g.site=flank(remap.probe,2)
+g.site=psetdiff(g.site, sbe)
 
 load("~/Big_Data/Genetics/121511_dbSNP/snp135_ucsc.rda")
 ##Get just snps which are relevant to these probes and their
@@ -46,6 +47,21 @@ values(sbe)$sbe.snp.name[snp.present]=
   values(snp.list)$name[sbe.snp[snp.present]]
 values(sbe)$sbe.snp.het[snp.present]=
   values(snp.list)$avHet[sbe.snp[snp.present]]
+
+##Init g.site snp fields
+values(g.site)$g.site.snp.boo=logical(length(g.site))
+values(g.site)$g.site.snp.name=character(length(g.site))
+values(g.site)$g.site.snp.het=numeric(length(g.site))
+##Match G.SITE to SNP
+g.site.snp=findOverlaps(g.site, snp.list, select="first")
+snp.present=!is.na(g.site.snp)
+##Use match
+values(g.site)$g.site.snp.boo[snp.present]=T
+values(g.site)$g.site.snp.name[snp.present]=
+  values(snp.list)$name[g.site.snp[snp.present]]
+values(g.site)$g.site.snp.het[snp.present]=
+  values(snp.list)$avHet[g.site.snp[snp.present]]
+
 
 ##Repeat for whole probe 
 
@@ -133,6 +149,19 @@ idx=values(gprobes)$map.idx
 ##Add SNP info to gprobes
 values(gprobes)=cbind(values(gprobes), values(sbe[idx])[,-(1:2)],
         values(remap.probe[idx])[,-(1:2)])
+
+##Add G Site SNP info to gprobes
+
+values(gprobes)=cbind(values(gprobes), values(g.site[idx]))
+
+##If type I probe, g.site is irrelvant
+type.i=values(gprobes)$probe.type=="I"
+
+values(gprobes)$g.site.snp.boo[type.i]=F
+values(gprobes)$g.site.snp.name[type.i]=""
+values(gprobes)$g.site.snp.het[type.i]=0
+
+
 
 save(file="probe_obj_t0.rda", list=c("gprobes", "sbe", "remap.probe"))
 
