@@ -27,7 +27,7 @@ load("~/Data/Infinium/121311_analysis/probe_obj_final.rda")
 
 ##Add something indexing gprobes vs actual data order
 values(gprobes)$minfi.idx=match(values(gprobes)$name,
-                 rownames(getMeth(RGset[,1])))
+                 rownames(getGreen(RGset[,1])))
 
 ##Probes with no problems SNPs
 good.probes=values(gprobes)$minfi.idx[(!values(gprobes)$sbe.snp.boo)&

@@ -1,7 +1,5 @@
-#Finding chromosomal locations of sequences
-
-
-#Load libraries in
+##Finding chromosomal locations of sequences
+##Load libraries in
 library(Biostrings)
 library(BSgenome)
 library(BSgenome.Hsapiens.UCSC.hg19)
