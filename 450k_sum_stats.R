@@ -108,6 +108,33 @@ mad.ftest <- function(grp1, grp2) {
 }
   
 
+incvar.ftest <- function(grp1, grp2) {
+  ##This function applies an F-test to variance - greater variance in grp2
+
+  grp1.beta=getBeta(grp1)
+  grp2.beta=getBeta(grp2)
+  probe.list=rownames(grp1.beta)
+  
+  bad.probes=apply(cbind(grp1.beta, grp2.beta), 1, function(x) any(is.na(x)))
+
+  grp1.beta=grp1.beta[!bad.probes,]
+  grp2.beta=grp2.beta[!bad.probes,]
+  
+  n.probes=dim(grp1.beta)[1]
+  
+  f.p.val=numeric(n.probes)
+  
+  for (i in 1:dim(grp1.beta)[1]) {
+    f.p.val[i]=var.test(grp1.beta[i,], grp2.beta[i,],
+    alternative="greater")$p.value
+  }
+
+  result=data.frame(probe.name=rownames(grp1.beta), idx=match(rownames(grp1.beta), probe.list),
+    var.pval=f.p.val)
+  result=result[order(result$var.pval),]
+  rownames(result)=NULL
+  return(result)
+}
 
 incvar.ftest <- function(grp1, grp2) {
   ##This function applies an F-test to variance - greater variance in grp2

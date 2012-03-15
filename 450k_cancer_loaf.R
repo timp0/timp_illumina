@@ -190,8 +190,8 @@ wilms.madup=mad.ftest(wilms.canc, wilms.norm)
 wilms.maddown=mad.ftest(wilms.norm, wilms.canc)
 
 ##wilms.v.lower=incvar.ftest(wilms.norm, wilms.canc)
-##Best difference in variation probes
 
+##Best difference in variation probes
 ##Get out all Colon normal and cancer *that aren't loaf
 
 colon.data=tis.data[chosen.probes,pData(tis.data)$Tissue=="colon"]
@@ -204,54 +204,21 @@ colon.m.probes=mean.ttest(colon.canc, colon.norm)
 ##colon.v.probes=incvar.ftest(colon.canc,colon.norm)
 ##colon.v.lower=incvar.ftest(colon.norm, colon.canc)
 colon.madup=mad.ftest(colon.canc, colon.norm)
-colon.maddown=mad.ftest(colon.norm, colon.canc)
+
 
 pdf("colon_more.pdf")
-
 ##MDS of colon
 MDS.CpG(colon.data[colon.madup$idx[1e3],])
-
 for (i in 1:50) {
-
   CpG.plot(colon.data[colon.madup$idx[i],])
 }
-
 dev.off()
-
 pdf("wilms_more.pdf")
-
 ##MDS of wilms
 ##MDS.CpG(wilms.data[wilms.m.probes$idx[1:50],])
 MDS.CpG(wilms.data[wilms.madup$idx[1e3],])
-
 for (i in 1:50) {
-
   CpG.plot(wilms.data[wilms.madup$idx[i],])
 }
-
 dev.off()
 
-
-pdf("colon_less.pdf")
-
-##MDS of colon
-MDS.CpG(colon.data[colon.maddown$idx[1:1e3],])
-
-for (i in 1:50) {
-
-  CpG.plot(colon.data[colon.maddown$idx[i],])
-}
-
-dev.off()
-
-pdf("wilms_less.pdf")
-
-##MDS of wilms
-MDS.CpG(wilms.data[wilms.maddown$idx[1:50],])
-
-for (i in 1:50) {
-
-  CpG.plot(wilms.data[wilms.maddown$idx[i],])
-}
-
-dev.off()
