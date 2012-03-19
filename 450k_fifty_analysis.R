@@ -1,5 +1,4 @@
-source("450k_cancer_loadin.R")
-source("~/Code/timp_illumina/450k_sum_stats.R")
+source("~/Code/timp_illumina/450k_cancer_loadin.R")
 setwd("~/Data/Infinium/030812_analysis")
 
 all.tis=c("colon", "lung", "breast", "thyroid", "kidney", "pancreas",
@@ -49,7 +48,6 @@ fiddy.sig=univ.vinc.middle$idx[univ.vinc.middle$var.pval<1e-15]
 
 pdf("sigs.pdf")
 
-hist(log10(u
 
 for (i in fiddy.sig) {
 

@@ -1,22 +1,80 @@
 ##Ok -this function is to be designed to easily give us stats of various Tissue types and or
 ##Phenotypes as a subset of the data we have
 
-per.stats <- function (data, tissue="colon", pheno="normal") {
+winsor.probes <- function(subdata, per=0.05,
+                           winsor=F, quantile=F) {
+  require(matrixStats)
+
+  
+  probe.num=dim(subdata)[1]
+  samp.num=dim(subdata)[2]
+  
+  stats=per.stats(subdata, specific=F)
+  stats$sds=sqrt(stats$vars)
+  beta=getBeta(subdata)
+  if (quantile) {
+    prc=rowQuantiles(beta, probs=c(per, 1-per), na.rm=T)
+  } else {
+    prc = cbind(qnorm(per, mean=stats$means, sd=stats$sds),
+      qnorm(1-per, mean=stats$means, sd=stats$sds))
+  }
+
+  b.p=prc[,rep(1,10)]
+  a.p=prc[,rep(2,10)]
+
+  below=beta<b.p
+  above=beta>a.p
+  
+  if (windsor) {
+    beta[below]=b.p[below]
+    beta[above]=a.p[below]
+  } else {
+    beta[below]=NA
+    beta[above]=NA
+  }
+
+  return(beta)  
+}
+
+beta.trim <- function(subdata, per=0.05, winsor=F, trim=F) {
+##get Beta value, trim if asked to
+  
+  if (trim) {
+    beta=winsor.probes(subdata, per=per, winsor=F)
+  } else {
+    if (winsor) {
+      beta=winsor.probes(subdata, per=per, winsor=T)
+    } else {
+      beta=getBeta(subdata)
+    }
+  }
+
+  return(beta)
+}
+
+per.stats <- function (data, specific=T, tissue="colon", pheno="normal") {
 ##This function gives us stats on specific tissue and phenotypes
+  require(matrixStats)
   require(minfiLocal)
 
-  probe.num=dim(data)[1]
+
+  if (specific) {
+    subdata=data[,(pData(data)$Tissue %in% tissue) & (pData(data)$Phenotype %in% pheno)]
+  } else {
+    subdata=data
+  }
+
+  probe.num=dim(subdata)[1]
+  samp.num=dim(subdata)[2]
   stat.out=data.frame(avgs=numeric(probe.num), meds=numeric(probe.num),
     mads=numeric(probe.num), vars=numeric(probe.num))
-
-  subdata=data[,(pData(data)$Tissue %in% tissue) & (pData(data)$Phenotype %in% pheno)]    
   
   if (dim(subdata)[2]>0) {
     beta=getBeta(subdata)
-    stat.out$avgs=apply(beta, 1, mean)
-    stat.out$meds=apply(beta, 1, median)
-    stat.out$mads=apply(beta, 1, mad)
-    stat.out$vars=apply(beta, 1, var)
+    stat.out$means=rowMeans(beta, na.rm=T)
+    stat.out$meds=rowMedians(beta, na.rm=T)
+    stat.out$mads=rowMads(beta, centers=stat.out$meds, na.rm=T)
+    stat.out$vars=rowVars(beta, center=stat.out$means, na.rm=T)
   }
   
   return(stat.out)
@@ -51,9 +109,9 @@ col.pheno <- function(pheno) {
 mean.ttest <- function(grp1, grp2) {
   ##This test looks for mean difference
 
-  
-  grp1.beta=getBeta(grp1)
-  grp2.beta=getBeta(grp2)
+  grp1.beta=beta.trim(grp1, trim=T)
+  grp2.beta=beta.trim(grp2, trim=T)
+
   probe.list=rownames(grp1.beta)
 
   bad.probes=apply(cbind(grp1.beta, grp2.beta), 1, function(x) any(is.na(x)))
@@ -79,7 +137,11 @@ mean.ttest <- function(grp1, grp2) {
 
 mad.ftest <- function(grp1, grp2) {
   ##This function applied an F-test to mad - greater variance in grp2
+
   
+  grp1.beta=beta.trim(grp1, trim=T)
+  grp2.beta=beta.trim(grp2, trim=T)
+
   grp1.beta=getBeta(grp1)
   grp2.beta=getBeta(grp2)
   probe.list=rownames(grp1.beta)
@@ -108,61 +170,29 @@ mad.ftest <- function(grp1, grp2) {
 }
   
 
-incvar.ftest <- function(grp1, grp2) {
-  ##This function applies an F-test to variance - greater variance in grp2
+incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
 
-  grp1.beta=getBeta(grp1)
-  grp2.beta=getBeta(grp2)
-  probe.list=rownames(grp1.beta)
-  
-  bad.probes=apply(cbind(grp1.beta, grp2.beta), 1, function(x) any(is.na(x)))
+  grp1.beta=beta.trim(grp1, trim=T)
+  grp2.beta=beta.trim(grp2, trim=T)
 
-  grp1.beta=grp1.beta[!bad.probes,]
-  grp2.beta=grp2.beta[!bad.probes,]
+  ##Simple f test on matricies
+  probe.list=rownames(grp1)
   
-  n.probes=dim(grp1.beta)[1]
-  
+  n.probes=dim(grp1)[1]
   f.p.val=numeric(n.probes)
   
-  for (i in 1:dim(grp1.beta)[1]) {
-    f.p.val[i]=var.test(grp1.beta[i,], grp2.beta[i,],
+  for (i in 1:dim(grp1)[1]) {
+    f.p.val[i]=var.test(grp1[i,], grp2[i,],
     alternative="greater")$p.value
   }
 
-  result=data.frame(probe.name=rownames(grp1.beta), idx=match(rownames(grp1.beta), probe.list),
+  result=data.frame(probe.name=rownames(grp1), idx=match(rownames(grp1), probe.list),
     var.pval=f.p.val)
   result=result[order(result$var.pval),]
   rownames(result)=NULL
   return(result)
 }
 
-incvar.ftest <- function(grp1, grp2) {
-  ##This function applies an F-test to variance - greater variance in grp2
-
-  grp1.beta=getBeta(grp1)
-  grp2.beta=getBeta(grp2)
-  probe.list=rownames(grp1.beta)
-  
-  bad.probes=apply(cbind(grp1.beta, grp2.beta), 1, function(x) any(is.na(x)))
-
-  grp1.beta=grp1.beta[!bad.probes,]
-  grp2.beta=grp2.beta[!bad.probes,]
-  
-  n.probes=dim(grp1.beta)[1]
-  
-  f.p.val=numeric(n.probes)
-  
-  for (i in 1:dim(grp1.beta)[1]) {
-    f.p.val[i]=var.test(grp1.beta[i,], grp2.beta[i,],
-    alternative="greater")$p.value
-  }
-
-  result=data.frame(probe.name=rownames(grp1.beta), idx=match(rownames(grp1.beta), probe.list),
-    var.pval=f.p.val)
-  result=result[order(result$var.pval),]
-  rownames(result)=NULL
-  return(result)
-}
 
 
 
@@ -359,5 +389,89 @@ MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   }
 }
 
+
+
+per.tissue.full <- function() {
+  ##This funciton doesn't work right now(because I lifted it from some older code
+  ##But its intention is to plot all probes as a density map for tissue/tissue comparison
+  ##To get an overall picture
+
+  ##Next time I need it I will fix it
+
+  pdf("try1.pdf")
+  
+  for (i in 1:6) {
+    ##for (i in 1) {
+    for (j in 1:(num.pheno-1)) {
+      j.idx=(i-1)*num.pheno+j
+      if (data.sum.stats$num[j.idx]>0) {
+        for (k in (j+1):num.pheno) {
+          k.idx=(i-1)*num.pheno+k
+          if (data.sum.stats$num[k.idx]>0) {
+            
+            grid.newpage()
+            pushViewport(viewport(layout=grid.layout(2,2)))
+            
+            pushViewport(viewport(layout.pos.col=1, layout.pos.row=1))
+            h.mean=hexbin(data.sum.stats$avgs[[j.idx]],
+              data.sum.stats$avgs[[k.idx]],
+              xlab=paste(p.levels[j],"mean", sep="."),
+              ylab=paste(p.levels[k],"mean", sep="."))
+            a=plot(h.mean, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+            pushHexport(a$plot.vp)
+            grid.xaxis(gp=gpar(fontsize=8))
+            grid.yaxis(gp=gpar(fontsize=8))
+            popViewport()
+            popViewport()
+            
+            pushViewport(viewport(layout.pos.col=2, layout.pos.row=1))
+            h.med=hexbin(data.sum.stats$med[[j.idx]],
+              data.sum.stats$med[[k.idx]],
+              xlab=paste(p.levels[j],"median", sep="."),
+              ylab=paste(p.levels[k],"median", sep="."))
+            a=plot(h.med, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+            pushHexport(a$plot.vp)
+            grid.xaxis(gp=gpar(fontsize=8))
+            grid.yaxis(gp=gpar(fontsize=8))
+            popViewport()
+            popViewport()
+            
+            
+            pushViewport(viewport(layout.pos.col=1, layout.pos.row=2))
+            h.mads=hexbin(data.sum.stats$mads[[j.idx]],
+              data.sum.stats$mads[[k.idx]],
+              xlab=paste(p.levels[j],"mad", sep="."),
+              ylab=paste(p.levels[k],"mad", sep="."))
+            a=plot(h.mads, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+            pushHexport(a$plot.vp)
+            grid.xaxis(gp=gpar(fontsize=8))
+            grid.yaxis(gp=gpar(fontsize=8))
+            popViewport()
+            popViewport()
+            
+            
+            pushViewport(viewport(layout.pos.col=2, layout.pos.row=2))
+            h.vars=hexbin(data.sum.stats$vars[[j.idx]],
+              data.sum.stats$vars[[k.idx]],
+              xlab=paste(p.levels[j],"var", sep="."),
+              ylab=paste(p.levels[k],"var", sep="."))
+            a=plot(h.vars, legend=0, newpage=F, xaxt="n", yaxt="n", main=t.levels[i])
+            pushHexport(a$plot.vp)
+            grid.xaxis(gp=gpar(fontsize=8))
+            grid.yaxis(gp=gpar(fontsize=8))
+            popViewport()
+            popViewport()
+            
+            popViewport()
+            
+          }
+        }
+      }
+      
+    }        
+    
+  }
+
+}
 
 
