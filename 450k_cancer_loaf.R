@@ -18,15 +18,13 @@ tis.data=preprocessIllumina(RGset[,tis.samp])
 ##chosen.probes=good.probes[!(good.probes %in% isl.probes)]
 chosen.probes=good.probes
 
+##Get out all loaf
+loaf.data=tis.data[chosen.probes,(pData(tis.data)$Tissue %in% c("kidney", "colon"))]
+loaf.data$Phenotype[loaf.data$Plate=="IL005"]="loaf"
+
 ##Get out all Wilms normal and cancer *that aren't loaf
 wilms.data=tis.data[chosen.probes,(pData(tis.data)$Tissue=="kidney")]
 wilms.data$Phenotype[wilms.data$Plate=="IL005"]="loaf"
-
-##wilms.m.d=dmpFinder(wilms.data[good.probes,], pData(wilms.data)$Phenotype, type="categorical",
-##  qCutoff=1e-2)
-##wilms.m.d=wilms.m.d[!is.na(wilms.m.d$pval),]
-
-##Instead use primitive F-test
 
 wilms.norm=wilms.data[, pData(wilms.data)$Phenotype=="normal"]
 wilms.canc=wilms.data[, pData(wilms.data)$Phenotype=="cancer"]
@@ -46,24 +44,23 @@ colon.norm=colon.data[,pData(colon.data)$Phenotype=="normal"]
 colon.canc=colon.data[,pData(colon.data)$Phenotype=="cancer"]
 
 colon.m.probes=mean.ttest(colon.canc, colon.norm)
-##colon.v.probes=incvar.ftest(colon.canc,colon.norm)
+colon.v.probes=incvar.ftest(colon.canc,colon.norm)
 ##colon.v.lower=incvar.ftest(colon.norm, colon.canc)
-colon.madup=mad.ftest(colon.canc, colon.norm)
+##colon.madup=mad.ftest(colon.canc, colon.norm)
 
 
 pdf("colon_more.pdf")
 ##MDS of colon
-MDS.CpG(colon.data[colon.madup$idx[1e3],])
+MDS.CpG(colon.data[colon.v.probes$idx[1:1e3],])
 for (i in 1:50) {
-  CpG.plot(colon.data[colon.madup$idx[i],])
+  CpG.plot(colon.data[colon.v.probes$idx[i],])
 }
 dev.off()
 pdf("wilms_more.pdf")
 ##MDS of wilms
-##MDS.CpG(wilms.data[wilms.m.probes$idx[1:50],])
-MDS.CpG(wilms.data[wilms.madup$idx[1e3],])
+MDS.CpG(wilms.data[wilms.v.probes$idx[1:1e3],])
 for (i in 1:50) {
-  CpG.plot(wilms.data[wilms.madup$idx[i],])
+  CpG.plot(wilms.data[wilms.v.probes$idx[i],])
 }
 dev.off()
 

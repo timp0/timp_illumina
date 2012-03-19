@@ -180,15 +180,19 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   grp2.beta=beta.trim(grp2, trim=T)
 
   ##Simple f test on matricies
-  probe.list=rownames(grp1)
-  
+  probe.list=rownames(grp1.beta)
   n.probes=dim(grp1)[1]
+
+  n1=rowSums(!is.na(grp1.beta))
+  n2=rowSums(!is.na(grp2.beta))
+
   f.p.val=numeric(n.probes)
-  
-  for (i in 1:dim(grp1)[1]) {
-    f.p.val[i]=var.test(grp1.beta[i,], grp2.beta[i,],
-    alternative="greater")$p.value
-  }
+
+  var.grp1.beta=rowVars(grp1.beta, na.rm=T)
+  var.grp2.beta=rowVars(grp2.beta, na.rm=T)
+  ratio=var.grp1.beta/var.grp2.beta
+
+  f.p.val=pf(ratio,df1=n1, df2=n2, lower.tail=F)
 
   result=data.frame(probe.name=rownames(grp1.beta), idx=match(rownames(grp1.beta), probe.list),
     var.pval=f.p.val)
@@ -196,8 +200,6 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   rownames(result)=NULL
   return(result)
 }
-
-
 
 
 CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
