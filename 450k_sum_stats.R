@@ -3,32 +3,43 @@
 
 winsor.probes <- function(subdata, per=0.05,
                            winsor=F, quantile=F) {
+  ##Lots of fast row operations
   require(matrixStats)
 
-  
+  ##Dimensions of data
   probe.num=dim(subdata)[1]
   samp.num=dim(subdata)[2]
-  
-  stats=per.stats(subdata, specific=F)
-  stats$sds=sqrt(stats$vars)
+
   beta=getBeta(subdata)
+
+  
   if (quantile) {
+    ##Could use quantile - which is more discrete, doesn't assume normal, but
+    ##pretty much *will* exclude a value
     prc=rowQuantiles(beta, probs=c(per, 1-per), na.rm=T)
   } else {
+    ##Or can assume normal distribution
+    stats=per.stats(subdata, specific=F)
+    stats$sds=sqrt(stats$vars)
     prc = cbind(qnorm(per, mean=stats$means, sd=stats$sds),
       qnorm(1-per, mean=stats$means, sd=stats$sds))
   }
 
-  b.p=prc[,rep(1,10)]
-  a.p=prc[,rep(2,10)]
+  ##Make a matrix of the two cuttoffs
+  b.p=prc[,rep(1,samp.num)]
+  a.p=prc[,rep(2,samp.num)]
 
+  ##Make a boolean of it
   below=beta<b.p
   above=beta>a.p
-  
-  if (windsor) {
+
+  ##If winsorizing - set outliers to the cutoff
+  if (winsor) {
     beta[below]=b.p[below]
     beta[above]=a.p[below]
   } else {
+
+    ##If trimming, just remove    
     beta[below]=NA
     beta[above]=NA
   }
@@ -37,7 +48,7 @@ winsor.probes <- function(subdata, per=0.05,
 }
 
 beta.trim <- function(subdata, per=0.05, winsor=F, trim=F) {
-##get Beta value, trim if asked to
+##get Beta value, trim if asked to - default 5% trim
   
   if (trim) {
     beta=winsor.probes(subdata, per=per, winsor=F)
@@ -57,18 +68,21 @@ per.stats <- function (data, specific=T, tissue="colon", pheno="normal") {
   require(matrixStats)
   require(minfiLocal)
 
-
+  ##If specific subdata wanted, use specified tissue and or pheno
   if (specific) {
     subdata=data[,(pData(data)$Tissue %in% tissue) & (pData(data)$Phenotype %in% pheno)]
+    ##Or just run all tissues
   } else {
     subdata=data
   }
 
   probe.num=dim(subdata)[1]
   samp.num=dim(subdata)[2]
+  
   stat.out=data.frame(avgs=numeric(probe.num), meds=numeric(probe.num),
     mads=numeric(probe.num), vars=numeric(probe.num))
-  
+
+  ##If data not empty
   if (dim(subdata)[2]>0) {
     beta=getBeta(subdata)
     stat.out$means=rowMeans(beta, na.rm=T)
@@ -79,6 +93,7 @@ per.stats <- function (data, specific=T, tissue="colon", pheno="normal") {
   
   return(stat.out)
 }
+
 
 tis.pheno <- function(data.anno) {
   ##This function gives us a ordered table of the tissue v. phenotype freqs
@@ -103,8 +118,8 @@ col.pheno <- function(pheno) {
   coly=as.character(pheno.col$col[match(pheno, pheno.col$pheno)])
 
   return(coly)
-
 }
+
 
 mean.ttest <- function(grp1, grp2) {
   ##This test looks for mean difference
@@ -113,14 +128,9 @@ mean.ttest <- function(grp1, grp2) {
   grp2.beta=beta.trim(grp2, trim=T)
 
   probe.list=rownames(grp1.beta)
-
-  bad.probes=apply(cbind(grp1.beta, grp2.beta), 1, function(x) any(is.na(x)))
-
-  grp1.beta=grp1.beta[!bad.probes,]
-  grp2.beta=grp2.beta[!bad.probes,]
   
-  n.probes=dim(grp1.beta)[1]
 
+  n.probes=dim(grp1.beta)[1]
   
   t.p.val=numeric(n.probes)
   
@@ -137,30 +147,24 @@ mean.ttest <- function(grp1, grp2) {
 
 mad.ftest <- function(grp1, grp2) {
   ##This function applied an F-test to mad - greater variance in grp2
-
+  require(matrixStats)
   
   grp1.beta=beta.trim(grp1, trim=T)
   grp2.beta=beta.trim(grp2, trim=T)
 
-  grp1.beta=getBeta(grp1)
-  grp2.beta=getBeta(grp2)
   probe.list=rownames(grp1.beta)
-  n1=dim(grp1.beta)[2]
-  n2=dim(grp2.beta)[2]
-  
-  bad.probes=apply(cbind(grp1.beta, grp2.beta), 1, function(x) any(is.na(x)))
 
-  grp1.beta=grp1.beta[!bad.probes,]
-  grp2.beta=grp2.beta[!bad.probes,]
+  n1=rowSums(!is.na(grp1.beta))
+  n2=rowSums(!is.na(grp2.beta))
   
   n.probes=dim(grp1.beta)[1]
+
+  mad.grp1.beta=rowMads(grp1.beta, na.rm=T)
+  mad.grp2.beta=rowMads(grp2.beta, na.rm=T)
+  ratio=mad.grp1.beta/mad.grp2.beta
   
-  f.p.val=numeric(n.probes)
-  
-  for (i in 1:dim(grp1.beta)[1]) {
-    f.p.val[i]=pf((mad(grp1.beta[i,])/mad(grp2.beta[i,])),
-             df1=n1, df2=n2, lower.tail=F)
-  }
+  f.p.val=pf(ratio,df1=n1, df2=n2, lower.tail=F)
+
 
   result=data.frame(probe.name=rownames(grp1.beta), idx=match(rownames(grp1.beta), probe.list),
     var.pval=f.p.val)
@@ -182,11 +186,11 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   f.p.val=numeric(n.probes)
   
   for (i in 1:dim(grp1)[1]) {
-    f.p.val[i]=var.test(grp1[i,], grp2[i,],
+    f.p.val[i]=var.test(grp1.beta[i,], grp2.beta[i,],
     alternative="greater")$p.value
   }
 
-  result=data.frame(probe.name=rownames(grp1), idx=match(rownames(grp1), probe.list),
+  result=data.frame(probe.name=rownames(grp1.beta), idx=match(rownames(grp1.beta), probe.list),
     var.pval=f.p.val)
   result=result[order(result$var.pval),]
   rownames(result)=NULL

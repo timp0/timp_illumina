@@ -32,11 +32,9 @@ wilms.norm=wilms.data[, pData(wilms.data)$Phenotype=="normal"]
 wilms.canc=wilms.data[, pData(wilms.data)$Phenotype=="cancer"]
 
 wilms.m.probes=mean.ttest(wilms.canc, wilms.norm)
-##wilms.v.probes=incvar.ftest(wilms.canc,wilms.norm)
-wilms.madup=mad.ftest(wilms.canc, wilms.norm)
-wilms.maddown=mad.ftest(wilms.norm, wilms.canc)
-
-##wilms.v.lower=incvar.ftest(wilms.norm, wilms.canc)
+wilms.v.probes=incvar.ftest(wilms.canc,wilms.norm)
+##wilms.madup=mad.ftest(wilms.canc, wilms.norm)
+##wilms.maddown=mad.ftest(wilms.norm, wilms.canc)
 
 ##Best difference in variation probes
 ##Get out all Colon normal and cancer *that aren't loaf
