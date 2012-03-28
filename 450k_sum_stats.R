@@ -9,8 +9,12 @@ winsor.probes <- function(subdata, per=0.05,
   ##Dimensions of data
   probe.num=dim(subdata)[1]
   samp.num=dim(subdata)[2]
-
-  beta=getBeta(subdata)
+  
+  if (class(subdata)=="MethylSet") {
+    beta=getBeta(subdata)
+  } else {
+    beta=subdata
+  }
 
   
   if (quantile) {
@@ -56,7 +60,11 @@ beta.trim <- function(subdata, per=0.05, winsor=F, trim=F) {
     if (winsor) {
       beta=winsor.probes(subdata, per=per, winsor=T)
     } else {
-      beta=getBeta(subdata)
+      if (class(subdata)=="MethylSet") {
+        beta=getBeta(subdata)
+      } else {
+        beta=subdata
+      }
     }
   }
 
@@ -79,7 +87,7 @@ per.stats <- function (data, specific=T, tissue="colon", pheno="normal") {
   probe.num=dim(subdata)[1]
   samp.num=dim(subdata)[2]
   
-  stat.out=data.frame(avgs=numeric(probe.num), meds=numeric(probe.num),
+  stat.out=data.frame(means=numeric(probe.num), meds=numeric(probe.num),
     mads=numeric(probe.num), vars=numeric(probe.num))
 
   ##If data not empty
@@ -118,6 +126,25 @@ col.pheno <- function(pheno) {
   coly=as.character(pheno.col$col[match(pheno, pheno.col$pheno)])
 
   return(coly)
+}
+
+sym.fact <- function(types) {
+  ##Make symbols for some factor
+
+  labs=as.character(types)
+  
+  ##Possible symbols:
+  symby=c(21, 22, 23, 24, 25)
+
+  levels(types)=rep(symby, length.out=length(levels(types)))
+
+  result=data.frame(name=labs, sym=as.numeric(as.vector(types))) 
+
+  
+  return(result)
+
+  
+  
 }
 
 
@@ -202,7 +229,7 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
 }
 
 
-CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
+CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F) {
   ##This function is designed to spit out a plot of the methylation for a given CpG
   ##plotting the different tissues/phenotypes separately
 
@@ -221,7 +248,11 @@ CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   
   class.idx=jitter(class.idx)
 
-  beta=getBeta(samp.data)
+  if (norm) {
+    beta=sub.normal(samp.data)
+  } else {
+    beta=getBeta(samp.data)
+  }
 
   if (panel) {
 
@@ -253,7 +284,7 @@ CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
          xaxt="n", ylab="")
     
     axis(1, at=((ncol(samp.tab)+1)*(1:nrow(samp.tab)-(.5))),
-         labels=tis.types)
+         labels=tis.types, cex.axis=.8)
     
     abline(v=c((ncol(samp.tab)+1)*(1:nrow(samp.tab))), lty=2, lwd=2, col="black")
   }
@@ -269,7 +300,7 @@ CpG.pheno.density <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   require(minfiLocal)
   
   p.types=unique((pData(samp.data)$Phenotype))
-
+  
   
   densy=list()
   rugy=list()
@@ -370,7 +401,7 @@ MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   p.types=colnames(samp.tab)
   
   coly=col.pheno(samp.data$Phenotype)
-
+  tis.sym=sym.fact(factor(samp.data$Tissue))
   
   p=cmdscale(dist(t(getBeta(samp.data))), k=2)
 
@@ -381,7 +412,7 @@ MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
     pushViewport(vp)
    
     grid.points(p[,1], p[,2], gp=gpar(cex=0.6, fill=coly),
-                                   pch=21)
+                                   pch=tis.sym$sym)
     grid.rect()
     grid.yaxis()
     grid.xaxis()
@@ -391,12 +422,36 @@ MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   } else {  
     plot(p[,1], p[,2],
          bg=coly,
-         pch=21)
+         pch=tis.sym$sym)
+    
+    sym.labs=unique(tis.sym)
+    legend("topleft", as.character(sym.labs$name), pch=sym.labs$sym)
   }
 }
 
+sub.normal <- function(data){
+  ##This function subracts the median normal values per tissue from that tissue
+
+  samp.tab=tis.pheno(pData(data))
+
+  beta=getBeta(data)
+  
+  for (i in 1:dim(samp.tab)[1]) {
+
+    tissue=rownames(samp.tab)[i]
+
+    norm.stat=per.stats(data, tissue=tissue, pheno="normal")
+
+    beta[,data$Tissue==tissue]=beta[,data$Tissue]-norm.stat$meds
+  }
+
+  return(beta)
+}
+    
+  
 
 
+##Garbage
 per.tissue.full <- function() {
   ##This funciton doesn't work right now(because I lifted it from some older code
   ##But its intention is to plot all probes as a density map for tissue/tissue comparison

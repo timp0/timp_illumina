@@ -64,3 +64,29 @@ for (i in 1:50) {
 }
 dev.off()
 
+
+loaf.v.probes=cbind(wilms.v.probes,
+  colon.v.probes$var.pval[match(colon.v.probes$idx, wilms.v.probes$idx)])
+
+colnames(loaf.v.probes)[3:4]=c("wilms.p", "colon.p")
+
+##Trim off 0 p-values
+loaf.v.probes=loaf.v.probes[(loaf.v.probes$wilms.p!=0)&(loaf.v.probes$colon.p!=0),]
+
+##As an estimate let's multiply
+loaf.v.probes$both.p=loaf.v.probes$wilms.p*loaf.v.probes$colon.p
+
+loaf.v.probes=loaf.v.probes[order(loaf.v.probes$both.p),]
+
+
+pdf("whole_loaf.pdf")
+
+##MDS of wilms
+MDS.CpG(loaf.data[loaf.v.probes$idx[1:1e3],])
+for (i in 1:50) {
+  CpG.plot(loaf.data[loaf.v.probes$idx[i],])
+}
+dev.off()
+
+
+

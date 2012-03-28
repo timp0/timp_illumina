@@ -8,15 +8,14 @@ all.tis=c("colon", "lung", "breast", "thyroid", "kidney", "pancreas",
 ##Get out just cancer samples
 tis.samp=(pData(RGset)$Tissue %in% all.tis)
 
-tis.data=preprocessMinfi(RGset[,(tis.samp)])
+tis.data=preprocessIllumina(RGset[,(tis.samp)])
 
+tis.data=tis.data[good.probes,]
 
 ##Number of samples
 samp.tab=tis.pheno(pData(tis.data))
                                    
 probe.meds=numeric()              
-
-pdf("norms.pdf")
 
 ##Do per probe tests for each tissue
 for (i in 1:dim(samp.tab)[1]) {
@@ -26,39 +25,38 @@ for (i in 1:dim(samp.tab)[1]) {
   probe.meds=cbind(probe.meds, norm.stat$meds)
 
   colnames(probe.meds)[i]=rownames(samp.tab)[i]
-
-  hist((probe.meds[!is.na(probe.meds)]), main=rownames(samp.tab)[i], plot=T)
-
 }
 
-dev.off()
-
-full.meds=per.stats(tis.data, tissue=all.tis, pheno="normal")$meds
-
 ##
-middle.probes=which((full.meds<.65)&(full.meds>.35))
+middle.probes=which(rowSums((probe.meds>.3)&(probe.meds<.7))==8)
 
-all.norm=tis.data[,pData(tis.data)$Phenotype=="normal"]
-all.canc=tis.data[,pData(tis.data)$Phenotype=="cancer"]
+mid.data=tis.data[middle.probes,]
+
+all.norm=mid.data[,pData(mid.data)$Phenotype=="normal"]
+all.canc=mid.data[,pData(mid.data)$Phenotype=="cancer"]
 
 univ.vinc=incvar.ftest(all.canc, all.norm)
-univ.vinc.middle=univ.vinc[(univ.vinc$idx %in% middle.probes),]
 
-fiddy.sig=univ.vinc.middle$idx[univ.vinc.middle$var.pval<1e-15]
+fiddy.sig=univ.vinc$idx[univ.vinc$var.pval<1e-15]
 
 pdf("sigs.pdf")
 
+for (i in 1:50) {
 
-for (i in fiddy.sig) {
-
-##  CpG.plot(tis.data[i,])
+  CpG.plot(mid.data[fiddy.sig[i],])
   
 }
 
 dev.off()
 
+anno.top1000=gprobes[match(rownames(getMeth(mid.data[fiddy.sig[1:1000],])),
+  values(gprobes)$name)]
 
 
+
+
+
+save(file="fifty.rda", list=c("anno.top1000", "fiddy.sig")
 
 
 
