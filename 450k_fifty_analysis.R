@@ -37,28 +37,24 @@ all.canc=mid.data[,pData(mid.data)$Phenotype=="cancer"]
 
 univ.vinc=incvar.ftest(all.canc, all.norm)
 
-fiddy.sig=univ.vinc$idx[univ.vinc$var.pval<1e-15]
+fiddy.sig=univ.vinc[univ.vinc$var.pval<1e-15,]
 
 pdf("sigs.pdf")
 
 for (i in 1:50) {
 
-  CpG.plot(mid.data[fiddy.sig[i],])
+  CpG.plot(mid.data[fiddy.sig$idx[i],])
   
 }
 
 dev.off()
 
-anno.top1000=gprobes[match(rownames(getMeth(mid.data[fiddy.sig[1:1000],])),
-  values(gprobes)$name)]
+anno=gprobes[match(fiddy.sig$probe.name, values(gprobes)$name)]
+
+
+load("~/Data/Genetics/072111_blocks/lg_regions2.rda")
 
 
 
 
-
-save(file="fifty.rda", list=c("anno.top1000", "fiddy.sig")
-
-
-
-
-  
+save(file="fifty.rda", list=c("anno.top1000", "fiddy.sig"))
