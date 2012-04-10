@@ -55,6 +55,4 @@ anno=gprobes[match(fiddy.sig$probe.name, values(gprobes)$name)]
 load("~/Data/Genetics/072111_blocks/lg_regions2.rda")
 
 
-
-
 save(file="fifty.rda", list=c("anno.top1000", "fiddy.sig"))
