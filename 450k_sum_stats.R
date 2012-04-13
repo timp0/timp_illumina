@@ -108,43 +108,62 @@ tis.pheno <- function(data.anno) {
 
   desired.pheno.order=c("normal", "hyperplastic", "adenoma",
     "cancer", "metastasis", "loaf")
-
+  
   freqs=table(factor(data.anno$Tissue), factor(data.anno$Phenotype, levels=desired.pheno.order))
 
   return(freqs)
 }
 
-col.pheno <- function(pheno) {
 
+
+col.pheno <- function(pheno) {
+  
   ##coloring for phenotype
   pheno.col=data.frame(col=c("purple", "blue", "green", "orange", "red",
                          "skyblue"),
     pheno=c("normal", "hyperplastic", "adenoma", "cancer", "metastasis",
       "loaf"),
     stringsAsFactors=F)
-
+  
   coly=as.character(pheno.col$col[match(pheno, pheno.col$pheno)])
-
+  
   return(coly)
 }
 
-sym.fact <- function(types) {
-  ##Make symbols for some factor
+col.tissue <- function(tissue) {
 
-  labs=as.character(types)
+  ##coloring for tissue
+  tissue.col=data.frame(col=c("purple", "blue", "green", "orange", "red",
+                          "skyblue", "coral", "darkgoldenrod"),
+    tissue=c("breast", "colon", "esophagus", "kidney", "liver", "lung",
+      "pancreas", "thyroid"), stringsAsFactors=F)
   
+  coly=as.character(tissue.col$col[match(tissue, tissue.col$tissue)])
+  
+  return(coly)
+}
+
+sym.col <- function(data.anno, col.p=T) {
+  ##This function defines colors and symbols for phenotype and tissue
+
+  if (col.p) {
+    coly=col.pheno(data.anno$Phenotype)
+    s.fact=factor(data.anno$Tissue)
+  } else {
+    coly=col.tissue(data.anno$Tissue)
+    s.fact=factor(data.anno$Phenotype)
+  }
+    
   ##Possible symbols:
   symby=c(21, 22, 23, 24, 25)
 
-  levels(types)=rep(symby, length.out=length(levels(types)))
+  levels(s.fact)=rep(symby, length.out=length(levels(s.fact)))
 
-  result=data.frame(name=labs, sym=as.numeric(as.vector(types))) 
-
-  
+  result=data.frame(name=paste(data.anno$Tissue, data.anno$Phenotype, sep="."),
+    sym=as.numeric(as.vector(s.fact)), col=coly, stringsAsFactors=F) 
+ 
   return(result)
 
-  
-  
 }
 
 
@@ -229,7 +248,8 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
 }
 
 
-CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F) {
+CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F,
+                     col.p=T) {
   ##This function is designed to spit out a plot of the methylation for a given CpG
   ##plotting the different tissues/phenotypes separately
 
@@ -244,7 +264,7 @@ CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F) {
   class.idx=(match(samp.data$Tissue, tis.types)-1)*(ncol(samp.tab)+1)+
     match(samp.data$Phenotype, p.types)
 
-  coly=col.pheno(samp.data$Phenotype)
+  colsym=sym.col(pData(samp.data), col.p=col.p)
   
   class.idx=jitter(class.idx)
 
@@ -260,8 +280,8 @@ CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F) {
       xscale=extendrange(class.idx), yscale=c(-0.05,1.05))
     pushViewport(vp)
     
-    grid.points(class.idx, beta, gp=gpar(cex=0.6, fill=coly),
-                                   pch=21)
+    grid.points(class.idx, beta, gp=gpar(cex=0.6, fill=colsym$col),
+                                   pch=colsym$sym)
 
     panel.abline(v=c((ncol(samp.tab)+1)*(1:(nrow(samp.tab)-1))),
                  lty=2, lwd=1, col="black")
@@ -278,8 +298,8 @@ CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F) {
   } else {
     
     plot(class.idx,beta,
-         bg=coly,
-         pch=21, ylim=c(0,1),
+         bg=colsym$col,
+         pch=colsym$sym, ylim=c(0,1),
          main=rownames(beta),
          xaxt="n", ylab="")
     
@@ -389,7 +409,8 @@ PCA.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   }
 }
 
-MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
+MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5),
+                    col.p=T) {
   ##This function is designed to spit out a plot of the methylation for a given CpG
   ##plotting the different tissues/phenotypes separately
 
@@ -399,9 +420,8 @@ MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
 
   tis.types=rownames(samp.tab)
   p.types=colnames(samp.tab)
-  
-  coly=col.pheno(samp.data$Phenotype)
-  tis.sym=sym.fact(factor(samp.data$Tissue))
+
+  colsym=sym.col(pData(samp.data), col.p=col.p)
   
   p=cmdscale(dist(t(getBeta(samp.data))), k=2)
 
@@ -411,8 +431,8 @@ MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
       xscale=extendrange(p$x[,1]), yscale=c(p$x[,2]))
     pushViewport(vp)
    
-    grid.points(p[,1], p[,2], gp=gpar(cex=0.6, fill=coly),
-                                   pch=tis.sym$sym)
+    grid.points(p[,1], p[,2], gp=gpar(cex=0.6, fill=colsym$col),
+                                   pch=colsym$sym)
     grid.rect()
     grid.yaxis()
     grid.xaxis()
@@ -421,11 +441,11 @@ MDS.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
     
   } else {  
     plot(p[,1], p[,2],
-         bg=coly,
-         pch=tis.sym$sym)
+         bg=colsym$col,
+         pch=colsym$sym)
     
-    sym.labs=unique(tis.sym)
-    legend("topleft", as.character(sym.labs$name), pch=sym.labs$sym)
+    labs=unique(colsym)
+    legend("topleft", as.character(labs$name), pch=labs$sym, pt.bg=labs$col)
   }
 }
 
