@@ -1,4 +1,6 @@
-codedir=getwd()
+if (!exists("codedir")) {
+  codedir=getwd()
+}
 source(paste(codedir,"450k_sum_stats.R", sep="/"))
 
 ##Experimental file location
@@ -23,7 +25,7 @@ plates=rbind(plates, read.450k.sheet(expdatapath, "IL04[56].csv$", recursive=T))
 RGset=read.450k.exp(base=expdatapath, targets=plates)
 
 ##Get probe/snp map
-load("~/Data/Infinium/121311_analysis/probe_obj_final.rda")
+load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/probe_obj_final.rda")
 
 ##Add something indexing gprobes vs actual data order
 values(gprobes)$minfi.idx=match(values(gprobes)$name,
