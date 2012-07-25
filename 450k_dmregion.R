@@ -3,17 +3,21 @@
 if (!exists("codedir")) {
   codedir=getwd()
 }
-source(file.path(codedir,"450k_cancer_loadin.R"))
+
+plotdir="~/Dropbox/Data/Genetics/Infinium/071312_analysis"
+
+source(file.path(codedir,"450k_general_init.R"))
+
+##source(file.path(codedir,"450k_cancer_loadin.R"))
+
 
 ##Rafa functions - God I hate these - prob should move to git and 
-source("/home/bst/faculty/ririzarr/projects/cegs/functions.R")
-source("/home/bst/faculty/ririzarr/projects/cegs/450/functions.R")
+##source("/home/bst/faculty/ririzarr/projects/cegs/functions.R")
+##source("/home/bst/faculty/ririzarr/projects/cegs/450/functions.R")
 
 ##source("/home/bst/faculty/ririzarr/projects/cegs/cis-genome.R")
 ##source("/home/bst/faculty/ririzarr/projects/cegs/functions.R")
 
-
-require(minfiLocal)
 ##library(genefilter) #for row Sds()
 ##library(ggplot2)
 ##library(RColorBrewer)
@@ -22,75 +26,74 @@ require(minfiLocal)
 ##library(DNAcopy)
 
 
-##function to deal with funny outliers
-fixoutliers <- function(mat,K= -3){
-                  for(i in 1:ncol(mat)){
-                  tmp=log2(mat[,i]+0.5)
-                  mu=median(tmp);sd=mad(tmp) 
-                  mat[ (tmp - mu)/sd < K,i] <- 2^(K*sd + mu)
-                   }
-                  mat
-                 } 
 ##to get betas                 
 ilogit=function(x) 1/(1+exp(-x))
-
-##for plotting
-mypar <- function(a=1,b=1,brewer.n=8,brewer.name="Dark2",...){
-             par(mar=c(2.5,2.5,1.6,1.1),mgp=c(1.5,.5,0))
-             par(mfrow=c(a,b),...)
-             palette(brewer.pal(brewer.n,brewer.name))
-             }
 
 
 #read in data
 targets = read.450k.sheet("/thumper2/feinbergLab/personal/aunterma/IL058/", pattern = "_v2.csv$", recursive = TRUE)
-dermis=c("dermis")
-epi=c("epi")
-cells=c("fibroblast")
-Index=which(targets[,"Tissue"]%in%cells)
-pd=targets[Index,] 
+
+##All this is, for some reason, just to index the right arrays - way too much work here.
+##dermis=c("dermis")
+##epi=c("epi")
+##cells=c("fibroblast")
+##Index=which(targets[,"Tissue"]%in%cells)
+pd=targets[targets$Tissue %in% c("fibroblast"),] 
 RGset <- read.450k.exp(targets=pd, verbose=TRUE)
 MSet <- preprocessRaw(RGset)
 pd=pData(MSet)
+##Minfilocal function
 dat=orderByChromosome(MSet)##,everything = TRUE)
 
 ##QUICK PREPROC
+##RafaFunction
 dat$meth=fixUMoutliers(dat$meth)
 dat$unmeth=fixUMoutliers(dat$unmeth)
 
 ###LOOK for bad arrays
 Umeds=log2(colMedians(dat$unmeth))
 Mmeds=log2(colMedians(dat$meth))
-## plot(Umeds,Mmeds)
+#pdf(file.path(plotdir, "try.pdf"))
+#plot(Umeds,Mmeds)
+#dev.off()
+
 ##data exploration shows meds should be above 10.5. THIS SHOULD NOT
 ###BE AUTOMATIC.. EXPLORATION NEEDED TO CHOSE 10.5
+
 meds=(Umeds+Mmeds)/2
 ###filter the obviously bad ones
+##Did nothing to Amy's Data
 dat$meth=dat$meth[,meds>10.0]
 dat$unmeth=dat$unmeth[,meds>10.0]
 pd=pd[meds>10.0,]
-  
+
+
+
+
 ###Quantile normalize
 xIndex=which(dat$locs$chr=="chrX")
 yIndex=which(dat$locs$chr=="chrY")
 total=log2(dat$meth+dat$unmeth)
-##cc=colMeans(cor(total))
-##dat$meth=dat$meth[,cc>0.90]
-##dat$unmeth=dat$unmeth[,cc>0.90]
-##pd=pd[cc>0.90,]
-##pdf("/thumper2/feinbergLab/personal/aunterma/SkinAging/fibroblasts_sexpredictor.pdf")
-mypar(1,1)
-pd$sex=  boyorgirl(total,xIndex,yIndex,plot=TRUE)
-##dev.off()
+
+##This is to determine sex - is this right?
+pdf(file.path(plotdir, "try.pdf"))
+##mypar(1,1)
+pd$sex=boyorgirl(total,xIndex,yIndex,plot=TRUE)
+dev.off()
 
 ##normalize
 auIndex=which(!dat$locs$chr%in%c("chrX","chrY"))
+##auIndex is somatic
+##qnorm450 (in Rafa functions) Normalizes all somatic chromosomes, then normalizes sex chromosomes within sex, makes sense
+##Take samples per class for normalization - make a loop or someting
+##Normalize Type I and Type II probes separately
+
 dat$unmeth=qnorm450(dat$unmeth,auIndex,xIndex,yIndex,pd$sex)
 dat$meth=qnorm450(dat$meth,auIndex,xIndex,yIndex,pd$sex)
 
 ##save dat file
-save(dat,file="/thumper2/feinbergLab/personal/aunterma/SkinInfin/kera_dat.rda")
-save(pd,file="/thumper2/feinbergLab/personal/aunterma/SkinAging/kera_pd.rda")
+##save(dat,file="/thumper2/feinbergLab/personal/aunterma/SkinInfin/kera_dat.rda")
+##save(pd,file="/thumper2/feinbergLab/personal/aunterma/SkinAging/kera_pd.rda")
 #######################################################
 
 MG=500 ##max gap for groups to be like charm.. we choose 500 for now.
@@ -98,24 +101,37 @@ MNP=3 ##min number of probes per group
 BMNP=15
 
 ##read in dat and pd files, whichever fit the comparison you want
-load("dat.rda")
-load("pd.rda")
+##load("dat.rda")
+##load("pd.rda")
+
+##A bunch of these probes (which should be excluded) map multiple times perfectly, let alone with indel/outdel . . .
+sbe.test=data.frame(probe=values(sbe)$name, timp.chr=as.character(seqnames(sbe)), timp.loc=start(sbe), timp.single=values(gprobes)$single.hyb, stringsAsFactors=F)
+sbe.test$chris.loc=snps1$SBEpos[match(sbe.test$probe, snps1$Name)]
+not.the.same=sbe.test[sbe.test$timp.loc!=sbe.test$chris.loc,]
+##Continuing testing at some point
+sbe.good=data.frame(probe=values(gprobes)$name, chris.idx=match(values(gprobes)$name, snps1$Name),
+  sbe.snp.c=snps1$SBEsnp_RefSeqID[match(values(gprobes)$name, snps1$Name)]!="FALSE",
+  sbe.snp.t=values(gprobes)$sbe.snp.boo, stringsAsFactors=F)
+sbe.good$agree=sbe.good$sbe.snp.c==sbe.good$sbe.snp.t
+not.the.same=sbe.good[!sbe.good$agree,]
 
 
 ##TAKE OUT SNPS- Chris
-x=load("/home/bst/faculty/ririzarr/projects/cegs/450/#snps_chris.rda")
+x=load("/home/bst/faculty/ririzarr/projects/cegs/450/snps_chris.rda")
 snps1=get(x)
 snps1=snps1[match(rownames(dat$meth),snps1$IlmnID),]
-keepIndex=which#(snps1$SBEsnp_RefSeqID=="FALSE"&snps1$CGsnp_RefSeqID=="FALSE")
+keepIndex=which(snps1$SBEsnp_RefSeqID=="FALSE"&snps1$CGsnp_RefSeqID=="FALSE")
+
+##Ok - because dat is meth, unmeth, locs, everything (arrays of probes) get rid of annotation at same time
 for(i in 1:4) dat[[i]]=dat[[i]][keepIndex,]
 
 ##TAKE OUT SNPs- Winston (do either chris or winston's list, then label as such.)
-x=load("/thumper2/feinbergLab/personal/wtimp/Data/Infinium/121311_analysis/probe_obj_final.rda")
-snps=as.data.frame(gprobes)
-snps=snps[match(rownames(dat$meth),snps$name),]
-cpgsToRemove<-values(gprobes)$name[values(gprobes)$sbe.snp.boo | (values(gprobes)$snp.dist >= 0 & values(gprobes)$snp.dist <= 10)| values(gprobes)$g.site.snp.boo | !values(gprobes)$single.hyb]
-toKeep<-!rownames(dat$meth)%in%cpgsToRemove
-for(i in 1:4) dat[[i]]=dat[[i]][toKeep,]
+##x=load("/thumper2/feinbergLab/personal/wtimp/Data/Infinium/121311_analysis/probe_obj_final.rda")
+##snps=as.data.frame(gprobes)
+##snps=snps[match(rownames(dat$meth),snps$name),]
+##cpgsToRemove<-values(gprobes)$name[values(gprobes)$sbe.snp.boo | (values(gprobes)$snp.dist >= 0 & values(gprobes)$snp.dist <= 10)| values(gprobes)$g.site.snp.boo | !values(gprobes)$single.hyb]
+##toKeep<-!rownames(dat$meth)%in%cpgsToRemove
+##for(i in 1:4) dat[[i]]=dat[[i]][toKeep,]
 
 ###Ready to go...
 Y=log2(dat$meth/dat$unmeth)
@@ -124,12 +140,20 @@ A=log2(dat$meth+dat$unmeth)
 #######################################################
  BLOCKS
 #######################################################
-blocks<- collapse450(dat)
+
+##Finds blocks
+blocks<-collapse450(dat)
+
 island=as.numeric(dat$everything$Relation_to_UCSC_CpG_Island=="Island")
+
+##Concatenate to make single thing
 pd$Cat2<-paste(pd$Phenotye,pd$Status,sep="-")
 outcome=pd$Cat2
+
+##Do all the comparisons?
 tmp=c("")
 comps=combn(tmp,2)
+
 
 Tab=vector("list",nrow(comps))
 Blocktab=vector("list",nrow(comps))
@@ -151,12 +175,13 @@ for(h in 1:ncol(comps)){
   X=model.matrix(~tt)
   fit=lmFit(y,X)
 
+  ##True blocks
   value=tapply(fit$coef[,2],blocks$pns,mean)
   ind=which(!blocks$ann$island)
   cna=CNA(matrix(value[ind],ncol=1),
     chrom=paste(blocks$anno$chr[ind],blocks$anno$blockgroup[ind],sep="_"),
     maploc=blocks$anno$pos[ind],data.type="logratio",presorted=TRUE)
- cbs=segment(cna)
+  cbs=segment(cna)
   
   blocktab=cbs$output;names(blocktab)[c(2,3,4)]<-c("pns","start","end")
   blocktab$chr=sub("_.*","",cbs$output$chrom)

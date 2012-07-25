@@ -14,7 +14,7 @@ seqnames <- seqnames(Hsapiens)
 library(GenomicRanges)
 
 
-setwd("~/Data/Infinium/121311_analysis")
+setwd("~/Dropbox/Data/Genetics/Infinium/121311_analysis")
 load("tmp.rda")
 
 
@@ -25,7 +25,7 @@ sbe=flank(remap.probe,1)
 g.site=flank(remap.probe,2)
 g.site=psetdiff(g.site, sbe)
 
-load("~/Big_Data/Genetics/121511_dbSNP/snp135_ucsc.rda")
+load("~/LData/Genetics/121511_dbSNP/snp135_ucsc.rda")
 ##Get just snps which are relevant to these probes and their
 ##Single base extentions
 ##snp.relevant=snp.list %in% c(remap.probe, sbe)
@@ -169,7 +169,7 @@ load(file="probe_obj_t0.rda")
 
 ##Need to calc dist to CpG Island, dist to genes
 ##Load islands and genes object
-load("~/Data/Genetics/072111_blocks/gene_island.rda")
+load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
 
 ##This is needed so nearest will work, seems to be an issue with the version
 ##Of GRanges which made the object??
@@ -200,7 +200,7 @@ values(gprobes)$probe.seq=ill$pattern
 
 
 ##Get DMR info
-load("~/Data/Genetics/092011_Capture/dmr_cap.rda")
+load("~/Dropbox/Data/Genetics/MethSeq/092011_Capture/dmr_cap.rda")
 
 ##cdmrs=updateObject(cdmrs)
 z=as.matrix(findOverlaps(gprobes, cdmrs.hg19))
@@ -233,7 +233,7 @@ values(gprobes)$rdmr.boo[z[,1]]=T
 values(gprobes)$rdmr.idx[z[,1]]=z[,2]
 
 ##Get Block/LOCK/LAD info
-load("~/Data/Genetics/072111_blocks/lg_regions2.rda")
+load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/lg_regions2.rda")
 
 
 ccancer.blocks=updateObject(ccancer.blocks)

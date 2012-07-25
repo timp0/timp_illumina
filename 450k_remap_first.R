@@ -11,7 +11,7 @@ seqnames <- seqnames(Hsapiens)
 library(GenomicRanges)
 
 
-setwd("~/Data/Infinium/121311_analysis")
+setwd("~/Dropbox/Data/Genetics/Infinium/121311_analysis")
 
 #Load the Probe Manifest File
 ill <- read.csv("HumanMethylation450_15017482_v.1.1.csv",stringsAsFactors=FALSE, skip=7)
