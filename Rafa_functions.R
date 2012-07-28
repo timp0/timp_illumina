@@ -1,3 +1,10 @@
+##Convenience functions:
+##Get first index of array
+first<- function(x,k=1) x[k]
+ilogit=function(x) 1/(1+exp(-x))
+as.fumeric<- function(x,...) as.numeric(as.factor(x,...))
+
+
 qnorm450 <- function(mat,auIndex,xIndex,yIndex,sex){
   mat[auIndex,]=preprocessCore::normalize.quantiles(mat[auIndex,])
   sexIndexes=split(1:ncol(mat),sex)
@@ -144,4 +151,66 @@ boyorgirl <- function(A,xIndex,yIndex,plot=FALSE,id=1:ncol(A)){
     legend("bottomleft",c("M","F"),col=c(1,2),pch=1)
   }
   return(sex)
+}
+
+regionFinder<-function(x,regionNames,chr,position,y=x,
+                       summary=mean,ind=seq(along=x),order=TRUE,oneTable=TRUE,
+                       ...){
+
+  Indexes=getSegments(x[ind],regionNames[ind],...)
+  
+  res=vector("list",2)
+  for(i in 1:2){
+    res[[i]]=data.frame(chr=sapply(Indexes[[i]],function(Index) chr[ind[Index[1]]]),
+         start=sapply(Indexes[[i]],function(Index) min(position[ind[Index]])),
+         end=sapply(Indexes[[i]],function(Index) max(position[ind[Index]])),
+         value=sapply(Indexes[[i]],function(Index) summary(y[ind[Index]])),
+         area=sapply(Indexes[[i]],function(Index) abs(sum(y[ind[Index]]))),
+         pns=sapply(Indexes[[i]],function(Index) regionNames[ind[Index]][1]),
+         indexStart=sapply(Indexes[[i]],function(Index) min(ind[Index])),
+         indexEnd=sapply(Indexes[[i]],function(Index) max(ind[Index])))
+    res[[i]]$L=res[[i]]$indexEnd-res[[i]]$indexStart+1
+  }
+
+  names(res)=c("up","dn")
+  if(order & !oneTable){
+    if(nrow(res$up)>0) res$up=res$up[order(-res$up$area),]
+    if(nrow(res$dn)>0) res$dn=res$dn[order(-res$dn$area),]
+  }
+  if(oneTable){
+    res=rbind(res$up,res$dn)
+    if(order & nrow(res)>0) res=res[order(-res$area),]
+  }
+  return(res)
+
+}
+
+
+getSegments <- function(x,factor,cutoff=quantile(abs(x),0.99),verbose=TRUE){
+
+  Indexes=split(seq(along=x),factor)
+  regionID=vector("numeric",length(x))
+  LAST = 0
+  
+  segmentation = vector("numeric", length(x))
+  type = vector("numeric", length(x))
+
+  for (i in seq(along = Indexes)) {
+    if (verbose) if (i%%1000 == 0) cat(".")
+    Index = Indexes[[i]]
+    y = x[Index]
+    z = sign(y) * as.numeric(abs(y) > cutoff)
+    w = cumsum(c(1, diff(z) != 0)) + LAST
+    segmentation[Index] = w
+    type[Index] = z
+    LAST = max(w)
+  }
+  ##add a vector of the pns
+  res=list(upIndex=split(which(type>0),segmentation[type>0]),
+    dnIndex=split(which(type<0),segmentation[type<0]),
+    zeroIndex=split(which(type==0),segmentation[type==0]))
+  names(res[[1]])<-NULL
+  names(res[[2]])<-NULL
+  names(res[[3]])<-NULL
+  return(res)
 }

@@ -1,7 +1,7 @@
 if (!exists("codedir")) {
   codedir=getwd()
 }
-source(file.path(codedir,"450k_general_init.R")
+source(file.path(codedir,"450k_general_init.R"))
 
 ##Read in plates
 plates=read.450k.sheet(expdatapath, "IL00[25789]_v2.csv$", recursive=T)

@@ -24,7 +24,7 @@ seqnames <- seqnames(Hsapiens)
 library(GenomicRanges)
 
 
-setwd("~/Data/Infinium/121311_analysis")
+setwd("~/Dropbox/Data/Genetics/Infinium/121311_analysis")
 
 ##Load file from Part 1
 load("tmp.rda")
