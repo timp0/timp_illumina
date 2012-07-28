@@ -6,12 +6,20 @@
 library(Biostrings)
 library(BSgenome)
 library(BSgenome.Hsapiens.UCSC.hg19)
+library(GenomicRanges)
+
+source("~/Code/timp_genetics/region_tools.R")
+
 
 ##Get chromosome names
 seqnames <- seqnames(Hsapiens)
 
+chr.list=c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8",
+  "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19",
+  "chr20", "chr21", "chr22", "chrX", "chrY")
 
-library(GenomicRanges)
+
+
 
 
 setwd("~/Dropbox/Data/Genetics/Infinium/121311_analysis")
@@ -19,11 +27,6 @@ load("tmp.rda")
 
 
 load("remap_f.rda")
-
-##Make Single base extension GRanges
-sbe=flank(remap.probe,1)
-g.site=flank(remap.probe,2)
-g.site=psetdiff(g.site, sbe)
 
 load("~/LData/Genetics/121511_dbSNP/snp135_ucsc.rda")
 ##Get just snps which are relevant to these probes and their
@@ -33,6 +36,36 @@ load("~/LData/Genetics/121511_dbSNP/snp135_ucsc.rda")
 ##save(file="relevantsnp.rda", list="snp.list")
 load("relevantsnp.rda")
 
+
+##First find the probes which have one and only one match
+num.remap=table(values(remap.probe)$ori.index)
+values(gprobes)$single.hyb=num.remap==1
+
+multmatch=num.remap>1
+values(gprobes)$map.idx=match(values(gprobes)$name, values(remap.probe)$name)
+
+for (j in which(multmatch)) {
+  mapped.probes=which(values(remap.probe)$ori.index==j)
+  ##Nearest currently broken for GRanges (known bug, doesn't pick up overlaps
+  ##This is a fix
+  mapped.probes=mapped.probes[as.logical(seqnames(gprobes[j])==seqnames(remap.probe[mapped.probes]))]
+  intended=nearest(ranges(gprobes[j]), ranges(remap.probe[mapped.probes]))
+  values(gprobes)$map.idx[j]=mapped.probes[intended]
+}
+
+gprobes=gprobes[order(as.numeric(match(seqnames(gprobes), chr.list)), start(gprobes))]
+
+##Convenience idx
+idx=values(gprobes)$map.idx
+
+
+##Reorder reamp probe to match gprobes
+remap.probe=remap.probe[idx]
+
+##Make Single base extension GRanges
+sbe=flank(remap.probe,1)
+g.site=flank(remap.probe,2)
+g.site=psetdiff(g.site, sbe)
 
 ##Init sbe snp fields
 values(sbe)$sbe.snp.boo=logical(length(sbe))
@@ -130,29 +163,13 @@ values(remap.probe)$hetsnp.het[snp.present]=
   values(het.snp.list)$avHet[remap.probe.hetsnp[snp.present]]
 
 
-##First find the probes which have one and only one match
-num.remap=table(values(remap.probe)$ori.index)
-values(gprobes)$single.hyb=num.remap==1
-
-multmatch=num.remap>1
-values(gprobes)$map.idx=match(values(gprobes)$name, values(remap.probe)$name)
-
-for (j in which(multmatch)) {
-  mapped.probes=which(values(remap.probe)$ori.index==j)
-  intended=nearest(gprobes[j], remap.probe[mapped.probes])
-  values(gprobes)$map.idx[j]=mapped.probes[intended]
-}
-
-##Convenience idx
-idx=values(gprobes)$map.idx
-
 ##Add SNP info to gprobes
-values(gprobes)=cbind(values(gprobes), values(sbe[idx])[,-(1:2)],
-        values(remap.probe[idx])[,-(1:2)])
+values(gprobes)=cbind(values(gprobes), values(sbe)[,-(1:2)],
+        values(remap.probe)[,-(1:2)])
 
 ##Add G Site SNP info to gprobes
 
-values(gprobes)=cbind(values(gprobes), values(g.site[idx]))
+values(gprobes)=cbind(values(gprobes), values(g.site))
 
 ##If type I probe, g.site is irrelvant
 type.i=values(gprobes)$probe.type=="I"
@@ -178,7 +195,10 @@ load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
 ##ucsc.isl=updateObject(ucsc.isl)
 
 ##Find nearest genes to each probe(including overlap)
-close=nearest(gprobes, refseq.genes)
+##Because of a current problem w/ GRanges, I had to make a function
+##which goes by chromosome and uses just nearest IRanges
+close=g.nearest(gprobes, refseq.genes)
+##close=nearest(gprobes, refseq.genes)
 
 ##Put gene name and dist to gene
 values(gprobes)$nearest.gene=values(refseq.genes[close])$gene.name
@@ -188,7 +208,7 @@ values(gprobes)$dist.gene=width(pgap(ranges(gprobes),
 
 
 ##Find nearest UCSC CpG islands to each probe (including overlap)
-close=nearest(gprobes, ucsc.isl)
+close=g.nearest(gprobes, ucsc.isl)
 
 ##UCSC island index, and dist to ucsc isl
 values(gprobes)$nearest.island.index=close
