@@ -7,10 +7,7 @@ if (!exists("codedir")) {
 plotdir="~/Dropbox/Data/Genetics/Infinium/071312_analysis"
 filedir="~/LData/Genetics/Infinium/072512_analysis"
 
-source(file.path(codedir,"450k_general_init.R"))
-
-##Alter this so that it only gets the plate files, then later load the data that is interesting
-##Will speed things up 
+##Gets only plate files and loads in basic stuff
 source(file.path(codedir,"450k_cancer_loadin.R"))
 
 library(limma)
@@ -29,25 +26,18 @@ library(DNAcopy)
 ##library(matrixStats)
 
 
-
-
 ##to get betas                 
 
-
-
-
 ##Take just thyroid
+RGset=read.450k.exp(base=expdatapath, targets=plates[plates$Tissue %in% "thyroid",])
+MSet <- preprocessRaw(RGset)
 
-tis.samp=(pData(RGset)$Tissue %in% c("thyroid"))
-MSet <- preprocessRaw(RGset[,tis.samp])
-pd=pData(MSet)
 ##Minfilocal function
 dat=orderByChromosome(MSet)##,everything = TRUE)
-
-rm(list="RGset")
+dat$pd=pData(MSet)
 
 ##QUICK PREPROC
-##RafaFunction
+##RafaFunction - winsorization
 dat$meth=fixUMoutliers(dat$meth)
 dat$unmeth=fixUMoutliers(dat$unmeth)
 
@@ -70,53 +60,15 @@ meds=(Umeds+Mmeds)/2
 ##Did nothing to Amy's Data
 dat$meth=dat$meth[,meds>thresh]
 dat$unmeth=dat$unmeth[,meds>thresh]
-pd=pd[meds>thresh,]
+dat$pd=dat$pd[meds>thresh,]
 
 
-###Quantile normalize
-xIndex=which(dat$locs$chr=="chrX")
-yIndex=which(dat$locs$chr=="chrY")
-total=log2(dat$meth+dat$unmeth)
-
-##This is to determine sex - is this right?
-pdf(file.path(plotdir, "sex.pdf"))
-pd$sex=boyorgirl(total,xIndex,yIndex,plot=TRUE)
-dev.off()
-
-##normalize
-auIndex=which(!dat$locs$chr%in%c("chrX","chrY"))
-
-##auIndex is somatic
-##qnorm450 (in Rafa functions) Normalizes all somatic chromosomes, then normalizes sex chromosomes within sex, makes sense
-##Take samples per class for normalization - make a loop or someting
-##Normalize Type I and Type II probes separately
-
-dat$unmeth=qnorm450(dat$unmeth,auIndex,xIndex,yIndex,pd$sex)
-dat$meth=qnorm450(dat$meth,auIndex,xIndex,yIndex,pd$sex)
+dat=qnorm.subset(dat)
 
 ##save dat file
-save(list=c("dat", "pd"),file=file.path(filedir, "thy.rda"))
+save(list=c("dat"),file=file.path(filedir, "thy.rda"))
 
 #######################################################
-
-MG=500 ##max gap for groups to be like charm.. we choose 500 for now.
-MNP=3 ##min number of probes per group
-BMNP=15
-
-##read in dat and pd files, whichever fit the comparison you want
-##load("dat.rda")
-##load("pd.rda")
-
-##A bunch of these probes (which should be excluded) map multiple times perfectly, let alone with indel/outdel . . .
-##sbe.test=data.frame(probe=values(sbe)$name, timp.chr=as.character(seqnames(sbe)), timp.loc=start(sbe), timp.single=values(gprobes)$single.hyb, stringsAsFactors=F)
-##sbe.test$chris.loc=snps1$SBEpos[match(sbe.test$probe, snps1$Name)]
-##not.the.same=sbe.test[sbe.test$timp.loc!=sbe.test$chris.loc,]
-##Continuing testing at some point
-##sbe.good=data.frame(probe=values(gprobes)$name, chris.idx=match(values(gprobes)$name, snps1$Name),
-##  sbe.snp.c=snps1$SBEsnp_RefSeqID[match(values(gprobes)$name, snps1$Name)]!="FALSE",
-##  sbe.snp.t=values(gprobes)$sbe.snp.boo, stringsAsFactors=F)
-##sbe.good$agree=sbe.good$sbe.snp.c==sbe.good$sbe.snp.t
-##not.the.same=sbe.good[!sbe.good$agree,]
 
 
 ##TAKE OUT SNPS- Chris
@@ -136,14 +88,22 @@ A=log2(dat$meth+dat$unmeth)
 # BLOCKS
 #######################################################
 
+MG=500 ##max gap for groups to be like charm.. we choose 500 for now.
+MNP=3 ##min number of probes per group
+BMNP=15
+
+
+
 ##Finds blocks
+##Look at how this happens, worried that it misses methylation region transitions by relying
+##on location only
 blocks<-collapse450(dat)
 
 island=as.numeric(dat$everything$Relation_to_UCSC_CpG_Island=="Island")
 
 ##Concatenate to make single thing
-pd$Cat2<-paste(pd$Phenotype,pd$Status,sep="-")
-outcome=pd$Cat2
+dat$pd$Cat2<-paste(dat$pd$Phenotype,dat$pd$Status,sep="-")
+outcome=dat$pd$Cat2
 
 ##WORK HERE
 
@@ -151,11 +111,9 @@ outcome=pd$Cat2
 #http://www.quickmeme.com/meme/3q8jmd/
 comps=combn(unique(outcome),2)
 
-
 Tab=vector("list",ncol(comps))
 Blocktab=vector("list",ncol(comps))
 
-##outpath="/thumper2/feinbergLab/personal/aunterma/Rafa_Winston_fibro_spec/"
 
 for(h in 1:ncol(comps)){
   
@@ -167,14 +125,25 @@ for(h in 1:ncol(comps)){
 
   keep=outcome%in%c(T1,T2)
   y=Y[,keep]
+
+  ##Drop samples not used in generating the comparison
   tt=factor(outcome[keep],c(T1,T2))
 
   X=model.matrix(~tt)
   fit=lmFit(y,X)
 
   ##True blocks
+  ##
+  ##coef[,2] of fit is (in this case due to fit from linear model) the difference between
+  ##the two sample groups
+  ##Then take the mean of all differences per cluster
   value=tapply(fit$coef[,2],blocks$pns,mean)
-  ind=which(blocks$anno$type=="Island")
+
+  ##This was backwards for some reason - you want all opensea clusters
+  ind=which(blocks$anno$type=="OpenSea")
+  ##Create the cna object, giving is locations
+  ##Rafa segments chromosome up for areas that have too big a gap can't trust
+  ##Blocks.
   cna=CNA(matrix(value[ind],ncol=1),
     chrom=paste(blocks$anno$chr[ind],blocks$anno$blockgroup[ind],sep="_"),
     maploc=blocks$anno$pos[ind],data.type="logratio",presorted=TRUE)
@@ -185,11 +154,13 @@ for(h in 1:ncol(comps)){
   blocktab$pns=sub(".*_","",cbs$output$chrom)
   blocktab$indexStart=cbs$segRows[,1]
   blocktab$indexEnd=cbs$segRows[,2]
-  area=abs(cbs$output$seg.mean)*cbs$output$num.mark
+  ##area is number of probes times mean difference
+  blocktab$area=abs(cbs$output$seg.mean)*cbs$output$num.mark
+  blocktab$calc=apply(blocktab[,8:9], 1, function(x) mean((value[ind])[x[1]:x[2]]))
   #*(abs(cbs$output$seg.mean)>0.1)
-  blocktab$area=area
   blocktab=blocktab[order(-blocktab$area),-1]
-
+  
+  
   ##DMRs
   eb=ebayes(fit)
   ##Get the differential methylation(?)
@@ -201,7 +172,7 @@ for(h in 1:ncol(comps)){
   ss=fit$coef[,2]
   ##Number of probes per cluster
   Ns=tapply(seq(along=pns),pns,length)
-  ##Find clusters with mininmum probe number
+  ##Find clusters with at least mininmum probe number
   pnsind=which(pns%in%as.numeric(names(which((Ns>MNP)))))
 
   ##Just finds areas of consistant difference, based on a simple cutoff of difference
@@ -209,13 +180,8 @@ for(h in 1:ncol(comps)){
   ##Area is amount of difference*number of probes(clusters in this case)
   tab=tab[tab$area>0.5,]
 
-  ##if(nrow(tab)>1){
-  ##  genes=matchGenes(tab,build="hg19")
-  ##  tab=cbind(tab,genes)
-  ##}
-  ##Take mean value per cluster for each sample
-  
 
+  ##Take mean value per cluster for each sample
   pp=t(apply(tab[,7:8],1,function(i) colMeans(y[i[1]:i[2],,drop=FALSE])))
   ipp=ilogit(pp)
 
@@ -234,7 +200,7 @@ for(h in 1:ncol(comps)){
          xlab=T1,ylab=T2,main="Variance comparison")
   abline(0,1)
   dev.off()
-
+  
   
   Blocktab[[h]]=blocktab
   Tab[[h]]=tab
@@ -249,16 +215,23 @@ for(h in 1:ncol(comps)){
   pdf(file.path(plotdir, paste0("dmrs", pdfname)), width=8, height=11)
   
   for(i in 1:M){
+
+    ##Take probes within this defined region
     Index=which(dat$locs$chr==tab$chr[i] &
       dat$locs$pos >= tab$start[i] -ADD &
       dat$locs$pos <= tab$end[i] + ADD)
-    #Index=Index[pns[Index]==tab$pns[i]]
+    ##x is genomic position
     x=dat$locs$pos[Index]
+    #log2 ratio, just these probes
     yy=y[Index,]
     matplot(jitter(x),ilogit(yy),col=as.fumeric(tt),ylim=c(0,1),
             main=paste(tab$region[i],":",tab$name[i]),
             pch=16,cex=0.75,xlab=paste("location on",tab$chr[i]),ylab="Beta")
+
+    ##Rug with color according to island status
     for(j in seq(along=x)) rug(x[j],col=island[Index][j]+3,lwd=3)
+
+    ##Make a mean line for the regions for each sample (tt)
     tmpIndexes=split(1:ncol(yy),tt)
     for(j in seq(along=tmpIndexes)){
       yyy=rowMeans(yy[,tmpIndexes[[j]]])
@@ -266,14 +239,9 @@ for(h in 1:ncol(comps)){
       lines(x,ilogit(lfit$fitted),col=j)
     }
     legend("bottomleft",levels(tt),col=1:2,lty=1)
-    }
+  }
   dev.off()
-  
-  
-  
-
-  
-  
+ 
   ##write.csv(tab,paste(outpath,csvname1))
   ##write.csv(blocktab,paste(outpath,csvname2))
 }
@@ -281,8 +249,5 @@ for(h in 1:ncol(comps)){
 
 
 
-pdf(file.path(plotdir,paste0("mds", pdfname)),width=8, height=11)
-  
-dev.off()
 
 

@@ -160,6 +160,8 @@ regionFinder<-function(x,regionNames,chr,position,y=x,
   Indexes=getSegments(x[ind],regionNames[ind],...)
   
   res=vector("list",2)
+  ##Get up, then down from Indexes(getSegments) which finds areas of up or down comparison
+  
   for(i in 1:2){
     res[[i]]=data.frame(chr=sapply(Indexes[[i]],function(Index) chr[ind[Index[1]]]),
          start=sapply(Indexes[[i]],function(Index) min(position[ind[Index]])),

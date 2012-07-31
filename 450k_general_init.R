@@ -3,7 +3,7 @@ if (!exists("codedir")) {
   codedir=getwd()
 }
 
-source(file.path(codedir,"450k_sum_stats.R"))
+source(file.path(codedir,"450k_timp_functions.R"))
 source(file.path(codedir, "Rafa_functions.R"))
 
 
