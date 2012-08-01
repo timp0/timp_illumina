@@ -94,9 +94,7 @@ BMNP=15
 
 
 
-##Finds blocks
-##Look at how this happens, worried that it misses methylation region transitions by relying
-##on location only
+##Finds blocks of probes
 blocks<-collapse450(dat)
 
 island=as.numeric(dat$everything$Relation_to_UCSC_CpG_Island=="Island")
@@ -105,7 +103,8 @@ island=as.numeric(dat$everything$Relation_to_UCSC_CpG_Island=="Island")
 dat$pd$Cat2<-paste(dat$pd$Phenotype,dat$pd$Status,sep="-")
 outcome=dat$pd$Cat2
 
-##WORK HERE
+##Timp single descriptor
+dat$pd$desc=paste(dat$pd$Tissue, dat$pd$Status, dat$pd$Phenotype, sep="-")
 
 ##Do all the comparisons?
 #http://www.quickmeme.com/meme/3q8jmd/
@@ -245,9 +244,21 @@ for(h in 1:ncol(comps)){
   ##write.csv(tab,paste(outpath,csvname1))
   ##write.csv(blocktab,paste(outpath,csvname2))
 }
-    
 
 
+sel=c("normal", "cancer")
+pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
+cg.cluster(dat, grps=sel)
+dev.off()
 
 
+sel=c("hyperplastic", "cancer")
+pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
+cg.cluster(dat, grps=sel)
+dev.off()
 
+
+sel=c("normal", "hyperplastic")
+pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
+cg.cluster(dat, grps=sel)
+dev.off()

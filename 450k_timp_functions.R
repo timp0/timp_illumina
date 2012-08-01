@@ -455,7 +455,7 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
     dat$pd$sex=F
   }
   
- 
+
   ##auIndex is somatic
   ##qnorm450 (in Rafa functions) Normalizes all somatic chromosomes, then normalizes sex chromosomes within sex, makes sense
   ##Take samples per class for normalization - make a loop or someting
@@ -466,8 +466,149 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
 
   return(dat)
 }
+
+cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=1) {
+  ##This function does mds of probes which show a difference, seperated by regional differences
+  ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
+  require(limma)
+  require(ggplot2)
+  
+  if (!("Y" %in% names(dat))) {
+    dat$Y=log2(dat$meth/dat$unmeth)
+  }
+
+  if (!("probe.class" %in% names(dat))) {
+    dat$probe.class=collapse450(dat)
+  }
+  
+  ##Temp color assign
+  colsym=sym.col(dat$pd, col.p=T)
+
+  ##Select samples that are relevant
+  keep=as.matrix(dat$pd[ccomp])%in%grps
+  tt=factor((dat$pd[[ccomp]])[keep],grps)
+
+  ##This is determined sex from data, not sex given from annotation
+  sex=factor(dat$pd$sex[keep],c("M","F"))
+    
+  md.probes=data.frame()
+  volcano.probes=data.frame()
+
+  for(type in unique(dat$probe.class$anno$type)) {
+    pind <- which(dat$probe.class$anno$type==type & !dat$probe.class$anno$chr%in%c("chrX","chrY"))
+    
+    y=dat$Y[pind,keep]
+  
+    ##Fit linear model, get out differences per block
+    X=model.matrix(~tt+sex)
+    fit=lmFit(y,X)
+    eb=ebayes(fit)
+
+    ##Keep just the probes which pass p-value of difference for that comparison, and are more than a logratio of 2.5 away (either 4x or 1/4)
+    pind2=pind[eb$p.value[,2] < p.thresh & abs(fit$coef[,2])>r.thresh]
+    ##Keep all samples for plot
+    y=dat$Y[pind2,]
+    
+    temp.volc=data.frame(probes=type, pval=eb$p.value[,2], ratio=fit$coef[,2])
+    volcano.probes=rbind(volcano.probes, temp.volc)
+
+    if (length(pind2)>1) {
+      md=cmdscale(dist(t(y)))
+      temp.md=data.frame(outcome=dat$pd[[ccomp]], probes=type, x=md[,1], y=md[,2])
+      
+      md.probes=rbind(md.probes, temp.md)
+    }
+  }
+  
+  print(ggplot(volcano.probes, aes(x=ratio, y=pval))+geom_point()+facet_wrap(~probes, scales="free")+
+        theme_bw()+scale_y_log10()+opts(title="Volcano"))
+  if (dim(md.probes)[1]>1) {
+    print(ggplot(md.probes, aes(x=x, y=y, colour=outcome))+geom_point() + facet_wrap(~probes, scales="free")+
+          theme_bw()+opts(title=paste(grps[1], grps[2], sep="-")))
+  }
+
+}
+
+
+block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer")) {
+  ##This function applies Rafa's block finding code properly
+  ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)
+  
+  require(limma)
+  require(DNAcopy)
+  
+  if (!("Y" %in% names(dat))) {
+    dat$Y=log2(dat$meth/dat$unmeth)
+  }
+
+  if (!("probe.class" %in% names(dat))) {
+    dat$probe.class=collapse450(dat)
+  }
+  
+  opensea=dat$probe.class$anno=="OpenSea"
+
+  
+  keep=as.matrix(dat$pd[ccomp])%in%grps
+  y=dat$Y[,keep]
+  tt=factor(as.matrix(dat$pd[ccomp])[keep],grps)
+  
+  ##This is determined sex from data, not sex given from annotation
+  sex=factor(dat$pd$sex[keep],c("M","F"))
+  
+  ##Fit linear model, get out differences per block
+  X=model.matrix(~tt+sex)
+  fit=lmFit(y,X)
+  value=tapply(fit$coef[,2],blocks$pns,mean)
+
+  ##Use circular binary segmentation
+  cna=CNA(matrix(value[opensea],ncol=1),
+    chrom=paste(dat$probe.class$anno$chr[opensea],dat$probe.class$anno$blockgroup[ind],sep="_"),
+    maploc=dat$probe.class$anno$pos[ind],data.type="logratio",presorted=TRUE)
+  cbs=segment(cna)
+
+  cutoffs <-  c(0:50,seq(51,100,2),seq(101,200,5),seq(200,500,100),Inf)
+
+  l=unlist(L)
+  cutoffs <-  c(0:50,seq(51,100,2),seq(101,200,5),seq(200,500,100),Inf)
+  l=cut(l,cutoffs,include.lower=TRUE)
+  v=unlist(V)
+
+  nulldist=split(v,l)
+    
+  
+  obsv <- cbs$output$seg.mean
+  obsl <-cut(cbs$output$num.mark,cutoffs,include.lower=TRUE)
+  Indexes=split(seq(along=obsv),obsl)
+
+  pvals=vector("numeric",length(obsv))
+
+  for(i in seq(along=Indexes)){
+    tmpind=Indexes[[i]]
+    null<-abs(nulldist[[names(Indexes)[i]]])
+    pvals[tmpind]=sapply(abs(obsv[tmpind]),function(x) mean(x<null))
+  }
+  
+  blocktab=cbs$output;names(blocktab)[c(2,3,4)]<-c("pns","start","end")
+  blocktab$chr=sub("_.*","",cbs$output$chrom)
+  blocktab$pns=sub(".*_","",cbs$output$chrom)
+  blocktab$indexStart=cbs$segRows[,1]
+  blocktab$indexEnd=cbs$segRows[,2]
+  blocktab$pval=pvals
   
 
+###MAKE data matrices
+##this is a marix with summarized values
+tmpY=t(sapply(Index,function(i) colMeans(Y[i,tIndex,drop=FALSE])))
+blockY=t(apply(blocktab[,8:9],1,function(i) colMeans(tmpY[ind[i[1]]:ind[i[2]],,drop=FALSE])))
+
+
+###create a matrix of values at blocks. keep for future reference
+##area=abs(cbs$output$seg.mean)*cbs$output$num.mark*(abs(cbs$output$seg.mean)>0.25)
+mydist=dist(t(blockY[blocktab$pval<0.01,]))
+tmp=cmdscale(mydist)
+
+
+}
 
 
 
