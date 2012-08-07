@@ -187,7 +187,6 @@ regionFinder<-function(x,regionNames,chr,position,y=x,
 
 }
 
-
 getSegments <- function(x,factor,cutoff=quantile(abs(x),0.99),verbose=TRUE){
 
   Indexes=split(seq(along=x),factor)
@@ -216,3 +215,55 @@ getSegments <- function(x,factor,cutoff=quantile(abs(x),0.99),verbose=TRUE){
   names(res[[3]])<-NULL
   return(res)
 }
+
+blockFinder <- function(mat,design,chr,pos,relationToIsland,islandName,
+                        coef=2,blocks=NULL,
+                        maxGap=400,
+                        blockMaxGap=10^5,
+                        summary=mean,
+                        returnBlocks=FALSE,verbose=TRUE,returnGRanges=TRUE){
+  require(DNAcopy)
+
+  
+  if(is.null(blocks)){
+    blocks<- collapse450(chr,pos,relationToIsland,islandName,
+                         maxGap=400,blockMaxGap=10^5,verbose=verbose)
+  }
+
+  ##Rafa is using only opensea to define blocks
+  ind=which(blocks$ann$type=="OpenSea")
+  
+  fit=lmFit(mat,design)
+
+  ##coef[,2] (default) of fit is (in this case due to fit from linear model) the difference between
+  ##the two sample groups - superior to just mean difference because it minimizes error
+  ##So reduces outlier effect(?)
+  ##Then take the mean of all differences per cluster (summary is a function)
+  value=tapply(fit$coefficients[,coef],blocks$pns,summary)
+ 
+  ##Create the cna object, giving is locations
+  ##Rafa segments chromosome up for areas that have too big a gap can't trust
+  ##Blocks using the collapse funcing (that's in my dat.init)
+  
+  ##Use circular binary segmentation
+  cna=CNA(matrix(value[ind],ncol=1),
+    chrom=paste(blocks$anno$chr[ind],blocks$anno$blockgroup[ind],sep="_"),
+    maploc=blocks$anno$pos[ind],data.type="logratio",presorted=TRUE)
+  cbs=segment(cna,verbose=ifelse(verbose,1,0))
+
+  blocktab=cbs$output;names(blocktab)[c(2,3,4)]<-c("pns","start","end")
+  blocktab$chr=sub("_.*","",cbs$output$chrom)
+  blocktab$pns=sub(".*_","",cbs$output$chrom)
+  blocktab$indexStart=cbs$segRows[,1]
+  blocktab$indexEnd=cbs$segRows[,2]
+
+  if(returnGRanges){
+    tmp<-blocktab[,-c(1,3,4,7)]
+    blocktab<-GRanges(seqnames=Rle(blocktab$chr),
+                      ranges=IRanges(start=blocktab$start,end=blocktab$end))
+    elementMetadata(blocktab)<-tmp
+  }
+  
+  if(returnBlocks) return(list(tab=blocktab,dat=cna,blockIndex=ind,blocks=blocks)) else return(list(tab=blocktab,dat=cna,blockIndex=ind))
+}
+

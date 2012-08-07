@@ -467,19 +467,177 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
   return(dat)
 }
 
-cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=1) {
-  ##This function does mds of probes which show a difference, seperated by regional differences
-  ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
+dat.preload <- function(plates,filt.thresh=11, plotter=F, plotdir="~/Dropbox/Temp",
+                        expdatapath="/thumper2/feinbergLab/core/arrays/illumina/") {
+  
+  ##Load samples
+  RGset=read.450k.exp(base=expdatapath, targets=plates)
+  MSet <- preprocessRaw(RGset)
+  
+  ##Minfilocal function to sort probes by name, spit out full probe anno
+  dat=orderByChromosome(MSet)##,everything = TRUE)
+  ##Get methylation info
+  dat$pd=pData(MSet)
+
+  ##QUICK PREPROC
+  ##RafaFunction - winsorization, default using 3 sd
+  dat$meth=fixUMoutliers(dat$meth)
+  dat$unmeth=fixUMoutliers(dat$unmeth)
+
+  
+  ##LOOK for bad arrays
+  Umeds=log2(colMedians(dat$unmeth))
+  Mmeds=log2(colMedians(dat$meth))
+  
+  
+  ##data exploration shows meds should be above 10.5. THIS SHOULD NOT
+  ##BE AUTOMATIC.. EXPLORATION NEEDED TO CHOSE 10.5
+  ##Timp-thyroid choice is ~11
+  if (plotter) {
+    ##Use plots to look
+    pdf(file.path(plotdir, "badwolf.pdf"))
+    plot(Umeds,Mmeds)
+    dev.off()
+  }
+  
+  meds=(Umeds+Mmeds)/2
+  ##filter the obviously bad ones
+  dat$meth=dat$meth[,meds>filt.thresh]
+  dat$unmeth=dat$unmeth[,meds>filt.thresh]
+  dat$pd=dat$pd[meds>filt.thresh,]
+  
+  ##Quantile normalize using my wrapper function
+  dat=qnorm.subset(dat) 
+}
+
+
+dat.init <- function(dat) {
+  ##Make sure data variable is initialized properly
   require(limma)
   require(ggplot2)
   
   if (!("Y" %in% names(dat))) {
     dat$Y=log2(dat$meth/dat$unmeth)
   }
-
+  
   if (!("probe.class" %in% names(dat))) {
     dat$probe.class=collapse450(dat)
   }
+
+  return(dat)
+}
+  
+dat.melt <- function(locs, pd, raw) {
+  ##This funciton melts data into a ggplot like format
+  melted=melt(raw)
+  names(melted)=c("pid", "sid", "value")
+  melted=cbind(melted, locs[match(melted$pid, rownames(locs)),])
+  melted=cbind(melted, pd[match(melted$sid, rownames(pd)),])
+  return(melted)
+}
+
+
+
+
+dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5) {
+  ##This function does mds of probes which show a difference, seperated by regional differences
+  ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
+
+  
+  dat=dat.init(dat)
+  
+  ##Temp color assign
+  colsym=sym.col(dat$pd, col.p=T)
+
+  ##Select samples that are relevant
+  keep=as.matrix(dat$pd[ccomp])%in%grps
+  y=Y[,keep]
+
+  tt=factor((dat$pd[[ccomp]])[keep],grps)
+  
+  ##This is determined sex from data, not sex given from annotation
+  sex=factor(dat$pd$sex[keep],c("M","F"))
+
+  X=model.matrix(~tt+sex)
+
+  ##Fit linear model, get out differences per block
+  fit=lmFit(y,X)
+  eb=ebayes(fit)
+
+  ##Cluster the probes
+  pns=clusterMaker(dat$locs$chr, dat$locs$pos, maxGap=MG)
+  ##Number of probes per cluster
+  Ns=tapply(seq(along=pns), pns, length)
+  ##Find good probe clusters(more than Min number of probes
+  pnsind=which(pns%in%as.numeric(names(which((Ns>MNP)))))
+
+  ##Get the differential methylation(?) for summary
+  dm=rowMeans(ilogit(y[,tt==grps[1]]))-rowMeans(ilogit(y[,tt==grps[2]]))
+  ##Just finds areas of consistant difference, based on a simple cutoff of difference
+  ss=eb$t[,2]
+  ##ss=fit$coef[,2]
+  tab=regionFinder(ss, pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+
+  ##Area is amount of difference*number of probes(clusters in this case)
+  tab=tab[tab$area>0.5,]
+  
+  pp=t(apply(tab[,7:8],1, function(i) colMeans(y[i[1]:i[2],,drop=FALSE])))
+  ipp=ilogit(pp)
+  
+  plot(rowMedians(pp[,tt==grps[1]]),rowMedians(pp[,tt==grps[2]]),xlim=c(0,3),ylim=c(0,3),
+       xlab=grps[1],ylab=grps[2],main="log2 Medians comparison")
+  abline(0,1)
+  plot(rowSds(pp[,tt==grps[1]]),rowSds(pp[,tt==grps[2]]),xlim=c(0,3),ylim=c(0,3),
+         xlab=grps[1],ylab=grps[2],main="log2 Variance comparison")
+  abline(0,1)
+  plot(rowMedians(ipp[,tt==grps[1]]),rowMedians(ipp[,tt==grps[2]]),xlim=c(0,1),ylim=c(0,1),
+       xlab=grps[1],ylab=grps[2],main="Medians comparison")
+  abline(0,1)
+  plot(rowSds(ipp[,tt==grps[1]]),rowSds(ipp[,tt==grps[2]]),xlim=c(0,.5),ylim=c(0,.5),
+         xlab=grps[1],ylab=grps[2],main="Variance comparison")
+  abline(0,1)
+
+  ##Plot top 25 or all dmrs, whichever is less
+  M=min(nrow(tab),25)
+  ##Plot this far (in bp) on either side
+  ADD=2000
+
+  for (i in 1:M) {
+    ##Take probes within this defined region
+    Index=which(dat$locs$chr==tab$chr[i] &
+      dat$locs$pos >= tab$start[i] -ADD &
+      dat$locs$pos <= tab$end[i] + ADD)
+    ##x is genomic position
+    x=dat$locs$pos[Index]
+    ##log2 ratio, just these probes
+    yy=y[Index,]
+    matplot(jitter(x),ilogit(yy),col=as.fumeric(tt),ylim=c(0,1),
+            main=paste(tab$region[i],":",tab$name[i]),
+            pch=16,cex=0.75,xlab=paste("location on",tab$chr[i]),ylab="Beta")
+    
+    ##Rug with color according to island status
+    for(j in seq(along=x)) rug(x[j],col=island[Index][j]+3,lwd=3)
+    
+    ##Make a mean line for the regions for each sample (tt)
+    tmpIndexes=split(1:ncol(yy),tt)
+    for(j in seq(along=tmpIndexes)){
+      yyy=rowMeans(yy[,tmpIndexes[[j]]])
+      lfit=loess(yyy~x,span=0.75)
+      lines(x,ilogit(lfit$fitted),col=j)
+    }
+    legend("bottomleft",levels(tt),col=1:2,lty=1)
+  }
+}
+
+
+
+
+
+cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=1) {
+  ##This function does mds of probes which show a difference, seperated by regional differences
+  ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
+
+  dat=dat.init(dat)
   
   ##Temp color assign
   colsym=sym.col(dat$pd, col.p=T)
@@ -530,82 +688,88 @@ cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thr
 }
 
 
-block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer")) {
-  ##This function applies Rafa's block finding code properly
-  ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)
+block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), permute.num=100) {
+  ##This function wraps Rafa's block finding code
+  ##Give the field that you want to use for classifying in Phenotype
+  ##Give the groups in grps
+  ##Number of permutations in permute.num
   
   require(limma)
   require(DNAcopy)
-  
-  if (!("Y" %in% names(dat))) {
-    dat$Y=log2(dat$meth/dat$unmeth)
-  }
 
-  if (!("probe.class" %in% names(dat))) {
-    dat$probe.class=collapse450(dat)
-  }
-  
-  opensea=dat$probe.class$anno=="OpenSea"
+  dat=dat.init(dat)
 
-  
   keep=as.matrix(dat$pd[ccomp])%in%grps
-  y=dat$Y[,keep]
-  tt=factor(as.matrix(dat$pd[ccomp])[keep],grps)
+  type=factor((dat$pd[[ccomp]])[keep],grps)
   
   ##This is determined sex from data, not sex given from annotation
   sex=factor(dat$pd$sex[keep],c("M","F"))
   
-  ##Fit linear model, get out differences per block
-  X=model.matrix(~tt+sex)
-  fit=lmFit(y,X)
-  value=tapply(fit$coef[,2],blocks$pns,mean)
+  ##Set up model matrix
+  X=model.matrix(~type+sex)
 
-  ##Use circular binary segmentation
-  cna=CNA(matrix(value[opensea],ncol=1),
-    chrom=paste(dat$probe.class$anno$chr[opensea],dat$probe.class$anno$blockgroup[ind],sep="_"),
-    maploc=dat$probe.class$anno$pos[ind],data.type="logratio",presorted=TRUE)
-  cbs=segment(cna)
+  ##Let's use Rafa's function here
+  ##True blocks
+  b=blockFinder(dat$Y[,keep],design=X,chr=dat$locs$chr,pos=dat$locs$pos,
+    relationToIsland=dat$everything$Relation_to_UCSC_CpG_Island,
+    islandName=dat$everything$UCSC_CpG_Islands_Name,
+    blocks=dat$probe.class)
 
-  cutoffs <-  c(0:50,seq(51,100,2),seq(101,200,5),seq(200,500,100),Inf)
-
-  l=unlist(L)
-  cutoffs <-  c(0:50,seq(51,100,2),seq(101,200,5),seq(200,500,100),Inf)
-  l=cut(l,cutoffs,include.lower=TRUE)
-  v=unlist(V)
-
-  nulldist=split(v,l)
+  ##Permutation testing for block p-value
+  if (permute.num>0) {
+    cat("Performing", permute.num, "permutations\n")
     
-  
-  obsv <- cbs$output$seg.mean
-  obsl <-cut(cbs$output$num.mark,cutoffs,include.lower=TRUE)
-  Indexes=split(seq(along=obsv),obsl)
+    L <- vector("list",permute.num)
+    V <- vector("list",permute.num)
+    for(j in 1:permute.num){
 
-  pvals=vector("numeric",length(obsv))
+      cat(j,"")
+      sX=model.matrix(~sample(type)+sex)
+      nb=blockFinder(Y[,keep],design=sX,dat$locs$chr,dat$locs$pos,
+        dat$everything$Relation_to_UCSC_CpG_Island,
+        dat$everything$UCSC_CpG_Islands_Name,
+        blocks=dat$probe.class)
+      
+      ##Number of probes contained
+      L[[j]]<-elementMetadata(nb$tab)$num.mark
+      ##Average difference of probes within block
+      V[[j]]<-elementMetadata(nb$tab)$seg.mean
+      cat(length(L[[j]]),"\n")
+    }
+     
+    l=unlist(L)
+    
+    ##Set cutoffs to various quantiles, defined by the number of blocks
+    ##over 1e4
+    cutoffs <- c(0,unique(quantile(l,seq(0,1,len=round(length(l)/10000)))))
+    ##Top cutoff is Infinity
+    cutoffs[length(cutoffs)]<-Inf
+    ##Bin things as a factor
+    l=cut(l,cutoffs,include.lower=TRUE)
+    ##
+    v=unlist(V)
+    ##Split it up according to length bins
+    nulldist=split(v,l)
+    
+    ##Put the actual data into the same cutoffs
+    obsv <- elementMetadata(b$tab)$seg.mean
+    obsl <-cut(elementMetadata(b$tab)$num.mark,cutoffs,include.lower=TRUE)
+    
+    ##Group the values in different length groups
+    Indexes=split(seq(along=obsv),obsl)
+    pvals=vector("numeric",length(obsv))
+    
+    ##Calculate p-values for each bin
+    for(j in seq(along=Indexes)){
+      tmpind=Indexes[[j]]
+      null<-abs(nulldist[[names(Indexes)[j]]])
+      pvals[tmpind]=sapply(abs(obsv[tmpind]),function(x) mean(x<null))
+    }
+    
+    elementMetadata(b$tab)$pvals=pvals
 
-  for(i in seq(along=Indexes)){
-    tmpind=Indexes[[i]]
-    null<-abs(nulldist[[names(Indexes)[i]]])
-    pvals[tmpind]=sapply(abs(obsv[tmpind]),function(x) mean(x<null))
   }
-  
-  blocktab=cbs$output;names(blocktab)[c(2,3,4)]<-c("pns","start","end")
-  blocktab$chr=sub("_.*","",cbs$output$chrom)
-  blocktab$pns=sub(".*_","",cbs$output$chrom)
-  blocktab$indexStart=cbs$segRows[,1]
-  blocktab$indexEnd=cbs$segRows[,2]
-  blocktab$pval=pvals
-  
 
-###MAKE data matrices
-##this is a marix with summarized values
-tmpY=t(sapply(Index,function(i) colMeans(Y[i,tIndex,drop=FALSE])))
-blockY=t(apply(blocktab[,8:9],1,function(i) colMeans(tmpY[ind[i[1]]:ind[i[2]],,drop=FALSE])))
-
-
-###create a matrix of values at blocks. keep for future reference
-##area=abs(cbs$output$seg.mean)*cbs$output$num.mark*(abs(cbs$output$seg.mean)>0.25)
-mydist=dist(t(blockY[blocktab$pval<0.01,]))
-tmp=cmdscale(mydist)
 
 
 }
