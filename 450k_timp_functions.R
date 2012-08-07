@@ -771,7 +771,7 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
   }
 
 
-
+  return(b)
 }
 
 
