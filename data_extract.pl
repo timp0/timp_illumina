@@ -11,12 +11,16 @@ use warnings;
 
 my $datapath="/thumper2/feinbergLab/core/arrays/illumina/";
 
+##Get the thing to match
 my $check=shift;
+##Location of output tarball/csv file
 my $outdir="/home/bst/other/wtimp/thumper/temp/";
-my $annofile="outtest2.csv";
-my $datatar="try.tgz";
+##Annofile name
+my $annofile="anno.csv";
+##Datafile name
+my $datatar="extractdat.tgz";
 
-##Get dir listing
+##Get dir listing - go through *all* the annotation files
 my @maindir=<$datapath*>;
 
 foreach (@maindir) {
