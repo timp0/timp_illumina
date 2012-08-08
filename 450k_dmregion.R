@@ -65,14 +65,14 @@ dat$pd$desc=paste(dat$pd$Tissue, dat$pd$Status, dat$pd$Phenotype, sep="-")
 
 
 sel=c("normal", "cancer")
-block.finding(dat, grps=sel)
-
+z=block.finding(dat, grps=sel)
 
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
 cg.cluster(dat, grps=sel)
 dev.off()
+
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"dmr.pdf")), width=11, height=8.5)
-dmr.find(dat, grps=sel)
+z=dmr.find(dat, grps=sel)
 dev.off()
 
 

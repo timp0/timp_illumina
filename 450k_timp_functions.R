@@ -526,43 +526,23 @@ dat.init <- function(dat) {
 
   return(dat)
 }
-  
-dat.melt <- function(locs, pd, raw) {
-  ##This funciton melts data into a ggplot like format
-  melted=melt(raw)
-  names(melted)=c("pid", "sid", "value")
-  melted=cbind(melted, locs[match(melted$pid, rownames(locs)),])
-  melted=cbind(melted, pd[match(melted$sid, rownames(pd)),])
-  return(melted)
-}
 
+dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5,
+                     num.permute=0) {
+  ##This function finds DMR, very similiar to how CHARM finds DMRs
+  ##Uses an area cutoff for number of probes*difference - using log2 ratio
 
-
-
-dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5) {
-  ##This function does mds of probes which show a difference, seperated by regional differences
-  ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
-
-  
   dat=dat.init(dat)
-  
-  ##Temp color assign
-  colsym=sym.col(dat$pd, col.p=T)
-
-  ##Select samples that are relevant
+   
+  ##Select samples that are relevant for DMR finding
   keep=as.matrix(dat$pd[ccomp])%in%grps
   y=Y[,keep]
 
-  tt=factor((dat$pd[[ccomp]])[keep],grps)
+  type=factor((dat$pd[[ccomp]])[keep],grps)
   
   ##This is determined sex from data, not sex given from annotation
   sex=factor(dat$pd$sex[keep],c("M","F"))
-
-  X=model.matrix(~tt+sex)
-
-  ##Fit linear model, get out differences per block
-  fit=lmFit(y,X)
-  eb=ebayes(fit)
+  X=model.matrix(~type+sex)
 
   ##Cluster the probes
   pns=clusterMaker(dat$locs$chr, dat$locs$pos, maxGap=MG)
@@ -571,64 +551,53 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   ##Find good probe clusters(more than Min number of probes
   pnsind=which(pns%in%as.numeric(names(which((Ns>MNP)))))
 
-  ##Get the differential methylation(?) for summary
-  dm=rowMeans(ilogit(y[,tt==grps[1]]))-rowMeans(ilogit(y[,tt==grps[2]]))
-  ##Just finds areas of consistant difference, based on a simple cutoff of difference
-  ss=eb$t[,2]
-  ##ss=fit$coef[,2]
-  tab=regionFinder(ss, pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+  ##Get the differential methylation (beta) for summary
+  dm=rowMeans(ilogit(y[,type==grps[1]]))-rowMeans(ilogit(y[,type==grps[2]]))
 
+  ##Fit linear model, get out differences per block
+  fit=lmFit(y,X)
+  eb=ebayes(fit)
+  
+  ##Use t-statistic of difference for region finding in this case, could also have used
+  ##fit coef[,2] which is the difference from the linear model fit)
+  ##ss=fit$coef[,2]
+  
+  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+  ##Need a cr here, regionFinder ... or it looks weird.
+  cat("\n")
+  ##Also - rownames of tab are awfully useless - figure out what the right piece of info is, I think it's probably pns
+  
+  ##Permutation testing for dmr p-value - is this p-value or q-vaule?  Semantics?
+  if (permute.num>0) {
+    cat("Performing", permute.num, "permutations\n")
+    
+    L <- vector("list",permute.num)
+    for(j in 1:permute.num){      
+      cat(j,"")
+      sX=model.matrix(~sample(type)+sex)
+      ##Fit linear model, get out differences per block
+      n.fit=lmFit(y,sX)
+      n.eb=ebayes(n.fit)
+      
+      n.tab=regionFinder(n.eb$t[,2], pns, dat$locs$chr, dat$locs$pos, cutoff=cutoff, ind=pnsind)
+      
+      ##Abs of area for distribution
+      L[[j]]<-abs(n.tab$area)
+      cat(length(L[[j]]),"\n")
+    }
+     
+    l=unlist(L)
+
+    Fn = ecdf(l+1e-9)
+
+    tab$pv = 1-Fn(abs(tab$area))    
+  }
+
+ 
   ##Area is amount of difference*number of probes(clusters in this case)
   tab=tab[tab$area>0.5,]
-  
-  pp=t(apply(tab[,7:8],1, function(i) colMeans(y[i[1]:i[2],,drop=FALSE])))
-  ipp=ilogit(pp)
-  
-  plot(rowMedians(pp[,tt==grps[1]]),rowMedians(pp[,tt==grps[2]]),xlim=c(0,3),ylim=c(0,3),
-       xlab=grps[1],ylab=grps[2],main="log2 Medians comparison")
-  abline(0,1)
-  plot(rowSds(pp[,tt==grps[1]]),rowSds(pp[,tt==grps[2]]),xlim=c(0,3),ylim=c(0,3),
-         xlab=grps[1],ylab=grps[2],main="log2 Variance comparison")
-  abline(0,1)
-  plot(rowMedians(ipp[,tt==grps[1]]),rowMedians(ipp[,tt==grps[2]]),xlim=c(0,1),ylim=c(0,1),
-       xlab=grps[1],ylab=grps[2],main="Medians comparison")
-  abline(0,1)
-  plot(rowSds(ipp[,tt==grps[1]]),rowSds(ipp[,tt==grps[2]]),xlim=c(0,.5),ylim=c(0,.5),
-         xlab=grps[1],ylab=grps[2],main="Variance comparison")
-  abline(0,1)
-
-  ##Plot top 25 or all dmrs, whichever is less
-  M=min(nrow(tab),25)
-  ##Plot this far (in bp) on either side
-  ADD=2000
-
-  for (i in 1:M) {
-    ##Take probes within this defined region
-    Index=which(dat$locs$chr==tab$chr[i] &
-      dat$locs$pos >= tab$start[i] -ADD &
-      dat$locs$pos <= tab$end[i] + ADD)
-    ##x is genomic position
-    x=dat$locs$pos[Index]
-    ##log2 ratio, just these probes
-    yy=y[Index,]
-    matplot(jitter(x),ilogit(yy),col=as.fumeric(tt),ylim=c(0,1),
-            main=paste(tab$region[i],":",tab$name[i]),
-            pch=16,cex=0.75,xlab=paste("location on",tab$chr[i]),ylab="Beta")
-    
-    ##Rug with color according to island status
-    for(j in seq(along=x)) rug(x[j],col=island[Index][j]+3,lwd=3)
-    
-    ##Make a mean line for the regions for each sample (tt)
-    tmpIndexes=split(1:ncol(yy),tt)
-    for(j in seq(along=tmpIndexes)){
-      yyy=rowMeans(yy[,tmpIndexes[[j]]])
-      lfit=loess(yyy~x,span=0.75)
-      lines(x,ilogit(lfit$fitted),col=j)
-    }
-    legend("bottomleft",levels(tt),col=1:2,lty=1)
-  }
+  return(tab)
 }
-
 
 
 
@@ -685,6 +654,81 @@ cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thr
           theme_bw()+opts(title=paste(grps[1], grps[2], sep="-")))
   }
 
+}
+
+  
+dat.melt <- function(locs, pd, raw) {
+  ##This funciton melts data into a ggplot like format
+  melted=melt(raw)
+  names(melted)=c("pid", "sid", "value")
+  melted=cbind(melted, locs[match(melted$pid, rownames(locs)),])
+  melted=cbind(melted, pd[match(melted$sid, rownames(pd)),])
+  return(melted)
+}
+
+probe.cluster.plot <- function(dat, tab) {
+  dat=dat.init(dat)
+
+  ##pp is log2 ratio - all samples per region
+  pp=t(apply(tab[,7:8],1, function(i) colMeans(dat$Y[i[1]:i[2],,drop=FALSE])))
+  ipp=ilogit(pp)
+
+  a=split(rownames(dat$pd), dat$pd$Phenotype)
+
+  q=llply(a, function(x) pp[,(colnames(pp) %in% x)])
+
+  r=ldply(q, function(x) data.frame(
+  
+  plot(rowMedians(pp[,type==grps[1]]),rowMedians(pp[,type==grps[2]]),xlim=c(0,3),ylim=c(0,3),
+       xlab=grps[1],ylab=grps[2],main="log2 Medians comparison")
+  abline(0,1)
+  plot(rowSds(pp[,type==grps[1]]),rowSds(pp[,type==grps[2]]),xlim=c(0,3),ylim=c(0,3),
+         xlab=grps[1],ylab=grps[2],main="log2 Variance comparison")
+  abline(0,1)
+  plot(rowMedians(ipp[,type==grps[1]]),rowMedians(ipp[,type==grps[2]]),xlim=c(0,1),ylim=c(0,1),
+       xlab=grps[1],ylab=grps[2],main="Medians comparison")
+  abline(0,1)
+  plot(rowSds(ipp[,type==grps[1]]),rowSds(ipp[,type==grps[2]]),xlim=c(0,.5),ylim=c(0,.5),
+         xlab=grps[1],ylab=grps[2],main="Variance comparison")
+  abline(0,1)
+
+}
+
+region.plot <- function(dat, tab) {
+  ##Make sure it's all initialized
+  dat=dat.init(dat)
+  
+  
+  ##Plot top 25 or all dmrs, whichever is less
+  M=min(nrow(tab),25)
+  ##Plot this far (in bp) on either side
+  ADD=2000
+
+  for (i in 1:M) {
+    ##Take probes within this defined region
+    Index=which(dat$locs$chr==tab$chr[i] &
+      dat$locs$pos >= tab$start[i] -ADD &
+      dat$locs$pos <= tab$end[i] + ADD)
+    ##x is genomic position
+    x=dat$locs$pos[Index]
+    ##log2 ratio, just these probes
+    yy=y[Index,]
+    matplot(jitter(x),ilogit(yy),col=as.fumeric(type),ylim=c(0,1),
+            main=paste(tab$region[i],":",tab$name[i]),
+            pch=16,cex=0.75,xlab=paste("location on",tab$chr[i]),ylab="Beta")
+    
+    ##Rug with color according to island status
+    for(j in seq(along=x)) rug(x[j],col=island[Index][j]+3,lwd=3)
+    
+    ##Make a mean line for the regions for each sample (type)
+    tmpIndexes=split(1:ncol(yy),type)
+    for(j in seq(along=tmpIndexes)){
+      yyy=rowMeans(yy[,tmpIndexes[[j]]])
+      lfit=loess(yyy~x,span=0.75)
+      lines(x,ilogit(lfit$fitted),col=j)
+    }
+    legend("bottomleft",levels(type),col=1:2,lty=1) 
+  }
 }
 
 
@@ -769,7 +813,6 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     elementMetadata(b$tab)$pvals=pvals
 
   }
-
 
   return(b)
 }
