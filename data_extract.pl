@@ -1,0 +1,70 @@
+#!/usr/bin/perl -w
+
+##
+# Extract 450k datasets to give copies
+# Created on 080812 by Winston Timp
+
+use local::lib;
+use PerlIO::eol;
+use Archive::Tar;
+use warnings;
+
+my $datapath="/thumper2/feinbergLab/core/arrays/illumina/";
+
+my $check=shift;
+my $outdir="/home/bst/other/wtimp/thumper/temp/";
+my $annofile="outtest2.csv";
+my $datatar="try.tgz";
+
+##Get dir listing
+my @maindir=<$datapath*>;
+
+foreach (@maindir) {
+    ##Get most recent csv file
+    my @annofiles=sort { -M $a <=> -M $b } <$_/*csv>;
+    if (defined($annofiles[0])) {
+	##print "$annofiles[0]\n";
+	push @csvs, $annofiles[0];
+    }    
+}
+
+##Open annotation file for our friends
+open(ANNO, ">", "$outdir$annofile");
+print ANNO ("Experimenter,Plate.ID,Sample.Well,Slide.ID,Array.ID,Hyb.date,Image.date,Sample.ID,Sex,Age,Race,Tissue,Status,Phenotype,Individual.ID,Source,Notes,Purification,Input.Amount\n");
+
+##Make new tar file for data
+my $tar = Archive::Tar->new();
+
+
+foreach $csv (@csvs) {
+    ##$csv=$csvs[8];
+    ##Open this CSV file - use eol package to defeat evil mac newline (\r) problems
+    open(INCSV, "<:raw:eol(LF)",$csv);
+
+##Skip all header lines
+    while(<INCSV>){
+	##print $_;
+	 if (m/Experimenter/) {	     
+	     last;
+	 }
+    }
+    
+    while(<INCSV>) {
+	if (m/$check/i) {
+	    print ANNO $_;
+	    chomp;
+	    @fields=split/\,/;
+	    @needthese=<$datapath$fields[1]/$fields[3]/$fields[3]_$fields[4]*.idat>;
+	    $tar->add_files( @needthese );
+	}
+	##last;
+    }
+ 
+    close(INCSV);
+}
+
+close(ANNO);
+
+$tar->add_files("$outdir$annofile");
+
+$tar->write("$outdir$datatar", COMPRESS_GZIP);
