@@ -14,7 +14,7 @@ my $datapath="/thumper2/feinbergLab/core/arrays/illumina/";
 ##Get the thing to match
 my $check=shift;
 ##Location of output tarball/csv file
-my $outdir="/home/bst/other/wtimp/thumper/temp/";
+my $outdir=shift;
 ##Annofile name
 my $annofile="anno.csv";
 ##Datafile name
