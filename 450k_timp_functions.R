@@ -528,7 +528,7 @@ dat.init <- function(dat) {
 }
 
 dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5,
-                     num.permute=0) {
+                     permute.num=0) {
   ##This function finds DMR, very similiar to how CHARM finds DMRs
   ##Uses an area cutoff for number of probes*difference - using log2 ratio
 
@@ -536,7 +536,7 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
    
   ##Select samples that are relevant for DMR finding
   keep=as.matrix(dat$pd[ccomp])%in%grps
-  y=Y[,keep]
+  y=dat$Y[,keep]
 
   type=factor((dat$pd[[ccomp]])[keep],grps)
   
