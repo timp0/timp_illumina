@@ -667,18 +667,18 @@ dat.melt <- function(locs, pd, raw) {
 }
 
 probe.cluster.plot <- function(dat, tab) {
-  dat=dat.init(dat)
+##  dat=dat.init(dat)
 
-  ##pp is log2 ratio - all samples per region
-  pp=t(apply(tab[,7:8],1, function(i) colMeans(dat$Y[i[1]:i[2],,drop=FALSE])))
-  ipp=ilogit(pp)
+##  ##pp is log2 ratio - all samples per region
+##  pp=t(apply(tab[,7:8],1, function(i) colMeans(dat$Y[i[1]:i[2],,drop=FALSE])))
+##  ipp=ilogit(pp)
 
-  a=split(rownames(dat$pd), dat$pd$Phenotype)
+##  a=split(rownames(dat$pd), dat$pd$Phenotype)
 
-  q=llply(a, function(x) pp[,(colnames(pp) %in% x)])
+##  q=llply(a, function(x) pp[,(colnames(pp) %in% x)])
 
-  r=ldply(q, function(x) data.frame(
-  
+##  r=ldply(q, function(x) data.frame)
+
   plot(rowMedians(pp[,type==grps[1]]),rowMedians(pp[,type==grps[2]]),xlim=c(0,3),ylim=c(0,3),
        xlab=grps[1],ylab=grps[2],main="log2 Medians comparison")
   abline(0,1)
@@ -691,46 +691,140 @@ probe.cluster.plot <- function(dat, tab) {
   plot(rowSds(ipp[,type==grps[1]]),rowSds(ipp[,type==grps[2]]),xlim=c(0,.5),ylim=c(0,.5),
          xlab=grps[1],ylab=grps[2],main="Variance comparison")
   abline(0,1)
+  
+}
+
+bad.get.tracks <- function(refdir="~/temp") {
+  ##Make gene and ucsc isl tracks, make more later if needed
+  require(rtracklayer)
+  
+  ##Init UCSC interface
+  session=browserSession("UCSC")
+  ##asume hg19, maybe fix this later if I get more sophisticated
+  genome(session)="hg19"
+  
+  ##Make gene table using ucsc and geneModels as a model - each row is an exon.  Make it as a GRanges
+
+  gene.tab=getTable(ucscTableQuery(session, track="RefSeq Genes", table="refGene"))
+  b=rep(as.numeric(rownames(gene.tab)), times=gene.tab$exonCount)
+  t=gene.tab[b,c(2:9, 12, 13)]
+  t$exonStarts=unlist(strsplit(as.character(gene.tab$exonStarts), split=","))
+  t$exonEnds=unlist(strsplit(as.character(gene.tab$exonEnds), split=","))
+  t$exon=paste(t$name2, rownames(t), sep=".")
+  gene.r=GRanges(seqnames=t$chrom, strand=t$strand, ranges=IRanges(start=as.numeric(t$exonStarts), end=as.numeric(t$exonEnds)),
+    gene=t$name, symbol=t$name2, transcript=t$name, feature="gene", exon=t$exon)
+
+  this=GRanges(seqnames=tab$chr[i], ranges=IRanges(start=min(x), end=max(x)))  
+  q=subsetByOverlaps(gene.r, this)
+  o=data.frame(start=start(q), end=end(q), feature=values(q)$feature, gene=values(q)$gene,
+    exon=values(q)$exon, transcript=values(q)$transcript, symbol=values(q)$symbol, strand=as.character(strand(q)))
+  z=AnnotationTrack(q, chromosome="chr6", genome="hg19",  name="RefSeq Genes", showId=T, id="symbol", grouping="gene")
 
 }
 
+
+get.tracks <- function(refdir="~/temp") {
+  ##Make gene and ucsc isl tracks, make more later if needed
+  require(Gviz)
+
+  chroms=(paste0("chr", c(seq(22), "X", "Y")))
+
+  if(file.exists(file.path(refdir, "viz_geneisl.rda"))) {
+    load(file.path(refdir, "viz_geneisl.rda"))
+  } else {
+    genetrack=list()
+    isltrack=list()
+    for (i in chroms) {
+      genetrack[[i]]=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=i, genome="hg19",
+                 rstart="exonStarts", rends="exonEnds", gene="name",   symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T)
+      isltrack[[i]]=UcscTrack(track="CpG Islands", chromosome=i, genome="hg19",
+                start="chromStart", end="chromEnd", name="CpG Islands")     
+    }
+    ann=list(genetrack=genetrack, isltrack=isltrack)
+    save(list="ann", file=file.path(refdir, "viz_geneisl.rda"))
+  }
+  return(ann)
+}
+
+
+
+
 region.plot <- function(dat, tab) {
+  
+  require(Gviz)
+  require(rtracklayer)
+  
   ##Make sure it's all initialized
   dat=dat.init(dat)
   
+  ann=get.tracks(refdir="~/Dropbox/Data/Genetics/General/072312_tracks") 
   
   ##Plot top 25 or all dmrs, whichever is less
   M=min(nrow(tab),25)
   ##Plot this far (in bp) on either side
   ADD=2000
 
+  type=dat$pd$Phenotype
+
+
+  
   for (i in 1:M) {
+  
+  
     ##Take probes within this defined region
     Index=which(dat$locs$chr==tab$chr[i] &
-      dat$locs$pos >= tab$start[i] -ADD &
-      dat$locs$pos <= tab$end[i] + ADD)
+      dat$locs$pos >= tab$start[i]-ADD &
+      dat$locs$pos <= tab$end[i]+ADD)
+    
     ##x is genomic position
     x=dat$locs$pos[Index]
     ##log2 ratio, just these probes
-    yy=y[Index,]
-    matplot(jitter(x),ilogit(yy),col=as.fumeric(type),ylim=c(0,1),
-            main=paste(tab$region[i],":",tab$name[i]),
-            pch=16,cex=0.75,xlab=paste("location on",tab$chr[i]),ylab="Beta")
-    
-    ##Rug with color according to island status
-    for(j in seq(along=x)) rug(x[j],col=island[Index][j]+3,lwd=3)
-    
-    ##Make a mean line for the regions for each sample (type)
-    tmpIndexes=split(1:ncol(yy),type)
-    for(j in seq(along=tmpIndexes)){
-      yyy=rowMeans(yy[,tmpIndexes[[j]]])
-      lfit=loess(yyy~x,span=0.75)
-      lines(x,ilogit(lfit$fitted),col=j)
-    }
-    legend("bottomleft",levels(type),col=1:2,lty=1) 
-  }
-}
+    yy=dat$Y[Index,]
 
+
+    ##Use size of dots to make small dots, maybe also alpha for dots
+    mtrack=DataTrack(chromosome=tab$chr[i], start=x, width=1, data=ilogit(t(yy)), genome="hg19", name="Beta",
+      groups=type, type="smooth")    
+
+    probe.status=factor(dat$probe.class$anno$type)
+    probe.status=probe.status[dat$probe.class$pns[Index]]
+    probe.col=probe.status
+    levels(probe.col)=c("blue", "red", "orange", "green")
+    ptrack=AnnotationTrack(chromosome=tab$chr[i], start=x, width=1, genome="hg19", name="Probe",
+      feature=probe.status, collapse=T, mergeGroups=T, showId=F, stacking="dense")
+    
+    itrack=IdeogramTrack(genome="hg19", chromosome=tab$chr[i])
+    gtrack=GenomeAxisTrack()
+
+    
+    ##Can't query for range without feature(apparently), it fails
+
+    genetrack=ann$genetrack[[tab$chr[i]]]
+    isltrack=ann$isltrack[[tab$chr[i]]]
+    
+    uisltrack=UcscTrack(track="CpG Islands", chromosome=as.character(tab$chr[i]), genome="hg19",start="chromStart", end="chromEnd", name="CpG Islands",
+      from=min(x), to=max(x))     
+
+    ugenetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(tab$chr[i]), genome="hg19",
+      rstart="exonStarts", rends="exonEnds", gene="name", symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T,
+      from=min(x), to=max(x))
+
+    ##If no islands, fails
+
+    if (class(uisls)!="try-error")
+      
+    
+    plotTracks(list(itrack, gtrack, isltrack, ugenetrack,  z, mtrack, ptrack), sizes=c(.05, .05, .05, .1, .1, .7, .05), from=min(x), to=max(x), background.title="darkblue",
+               Shore="green", Island="blue", OpenSea="red", Shelf="orange")
+    
+    plotTracks(list(itrack, gtrack, isltrack, mtrack, ptrack), sizes=c(.05,.05, .05, .7, .05), from=min(x), to=max(x), background.title="darkblue",
+               Shore="green", Island="blue", OpenSea="red", Shelf="orange")
+    plotTracks(list(genetrack), from=min(x), to=max(x))
+
+    
+  }
+
+}
 
 block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), permute.num=100) {
   ##This function wraps Rafa's block finding code
@@ -769,7 +863,7 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
 
       cat(j,"")
       sX=model.matrix(~sample(type)+sex)
-      nb=blockFinder(Y[,keep],design=sX,dat$locs$chr,dat$locs$pos,
+      nb=blockFinder(dat$Y[,keep],design=sX,dat$locs$chr,dat$locs$pos,
         dat$everything$Relation_to_UCSC_CpG_Island,
         dat$everything$UCSC_CpG_Islands_Name,
         blocks=dat$probe.class)

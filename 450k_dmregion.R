@@ -28,7 +28,7 @@ library(DNAcopy)
 
 ##to get betas                 
 ##Get just thyroid
-data.preload(plates=plates[plates$Tissue %in% "thyroid",],filt.thresh=11)
+dat=dat.preload(plates=plates[plates$Tissue %in% "thyroid",],filt.thresh=11)
 
 
 ##save dat file
@@ -72,22 +72,11 @@ cg.cluster(dat, grps=sel)
 dev.off()
 
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"dmr.pdf")), width=11, height=8.5)
-z=dmr.find(dat, grps=sel)
+a=dmr.find(dat, grps=sel)
 dev.off()
 
-
-sel=c("hyperplastic", "cancer")
-pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
-cg.cluster(dat, grps=sel)
+pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrgviz.pdf")), width=11, height=8.5)
+##region.plot(dat, a)
 dev.off()
 
-
-sel=c("normal", "hyperplastic")
-pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
-cg.cluster(dat, grps=sel)
-dev.off()
-
-sel=c("hyperplastic", "adenoma")
-pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
-cg.cluster(dat, grps=sel)
-dev.off()
+ 
