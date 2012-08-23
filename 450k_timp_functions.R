@@ -514,7 +514,6 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, plotdir="~/Dropbox/Tem
 dat.init <- function(dat) {
   ##Make sure data variable is initialized properly
   require(limma)
-  require(ggplot2)
   
   if (!("Y" %in% names(dat))) {
     dat$Y=log2(dat$meth/dat$unmeth)
@@ -694,7 +693,7 @@ probe.cluster.plot <- function(dat, tab) {
   
 }
 
-bad.get.tracks <- function(refdir="~/temp") {
+raw.get.tracks <- function(refdir="~/temp") {
   ##Make gene and ucsc isl tracks, make more later if needed
   require(rtracklayer)
   
@@ -721,7 +720,6 @@ bad.get.tracks <- function(refdir="~/temp") {
   z=AnnotationTrack(q, chromosome="chr6", genome="hg19",  name="RefSeq Genes", showId=T, id="symbol", grouping="gene")
 
 }
-
 
 get.tracks <- function(refdir="~/temp") {
   ##Make gene and ucsc isl tracks, make more later if needed
@@ -757,7 +755,7 @@ region.plot <- function(dat, tab) {
   ##Make sure it's all initialized
   dat=dat.init(dat)
   
-  ann=get.tracks(refdir="~/Dropbox/Data/Genetics/General/072312_tracks") 
+  ##ann=get.tracks(refdir="~/Dropbox/Data/Genetics/General/072312_tracks") 
   
   ##Plot top 25 or all dmrs, whichever is less
   M=min(nrow(tab),25)
@@ -765,8 +763,6 @@ region.plot <- function(dat, tab) {
   ADD=2000
 
   type=dat$pd$Phenotype
-
-
   
   for (i in 1:M) {
   
@@ -796,32 +792,18 @@ region.plot <- function(dat, tab) {
     itrack=IdeogramTrack(genome="hg19", chromosome=tab$chr[i])
     gtrack=GenomeAxisTrack()
 
-    
-    ##Can't query for range without feature(apparently), it fails
-
-    genetrack=ann$genetrack[[tab$chr[i]]]
-    isltrack=ann$isltrack[[tab$chr[i]]]
-    
-    uisltrack=UcscTrack(track="CpG Islands", chromosome=as.character(tab$chr[i]), genome="hg19",start="chromStart", end="chromEnd", name="CpG Islands",
+    isltrack=UcscTrack(track="CpG Islands", chromosome=as.character(tab$chr[i]), genome="hg19",start="chromStart", end="chromEnd", name="CpG Islands",
       from=min(x), to=max(x))     
 
-    ugenetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(tab$chr[i]), genome="hg19",
+    genetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(tab$chr[i]), genome="hg19",
       rstart="exonStarts", rends="exonEnds", gene="name", symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T,
       from=min(x), to=max(x))
 
-    ##If no islands, fails
-
-    if (class(uisls)!="try-error")
-      
-    
-    plotTracks(list(itrack, gtrack, isltrack, ugenetrack,  z, mtrack, ptrack), sizes=c(.05, .05, .05, .1, .1, .7, .05), from=min(x), to=max(x), background.title="darkblue",
+    plotTracks(list(itrack, gtrack, isltrack, genetrack,  mtrack, ptrack), sizes=c(.05, .05, .05, .1, .7, .05), from=min(x), to=max(x), background.title="darkblue",
                Shore="green", Island="blue", OpenSea="red", Shelf="orange")
-    
-    plotTracks(list(itrack, gtrack, isltrack, mtrack, ptrack), sizes=c(.05,.05, .05, .7, .05), from=min(x), to=max(x), background.title="darkblue",
-               Shore="green", Island="blue", OpenSea="red", Shelf="orange")
-    plotTracks(list(genetrack), from=min(x), to=max(x))
 
-    
+    plotTracks(list(genetrack), from=min(x), to=max(x), background.title="darkblue",Shore="green", Island="blue", OpenSea="red", Shelf="orange")
+  
   }
 
 }
