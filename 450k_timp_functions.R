@@ -523,6 +523,20 @@ dat.init <- function(dat) {
     dat$probe.class=collapse450(dat)
   }
 
+  if (!("timp.anno" %in% names(dat))) {
+    load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/probe_obj_final.rda")
+    probey=as.data.frame(gprobes)
+    probey$islrelate="OpenSea"
+    probey$islrelate[probey$dist.island<4001]="Shelf"
+    probey$islrelate[probey$dist.island<2001]="Shore"
+    probey$islrelate[probey$dist.island==0]="Island"
+    dat$timp.anno$probe=data.frame(chr=probey$seqnames, off=probey$start, islrelate=probey$islrelate)
+    rownames(dat$timp.anno$probe)=probey$name
+    dat$timp.anno$sample=data.frame(id=dat$pd$Sample.ID, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
+      status=dat$pd$Status, pheno=dat$pd$Phenotype, note=dat$pd$Notes)
+    rownames(dat$timp.anno$sample)=rownames(dat$pd)
+    
+  }
   return(dat)
 }
 
@@ -656,12 +670,13 @@ cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thr
 }
 
   
-dat.melt <- function(locs, pd, raw) {
+dat.melt <- function(panno, sanno, raw) {
+  require(reshape)
   ##This funciton melts data into a ggplot like format
   melted=melt(raw)
   names(melted)=c("pid", "sid", "value")
-  melted=cbind(melted, locs[match(melted$pid, rownames(locs)),])
-  melted=cbind(melted, pd[match(melted$sid, rownames(pd)),])
+  melted=cbind(melted, panno[match(melted$pid, rownames(panno)),])
+  melted=cbind(melted, sanno[match(melted$sid, rownames(sanno)),])
   return(melted)
 }
 
@@ -721,41 +736,56 @@ raw.get.tracks <- function(refdir="~/temp") {
 
 }
 
-get.tracks <- function(refdir="~/temp") {
-  ##Make gene and ucsc isl tracks, make more later if needed
-  require(Gviz)
-
-  chroms=(paste0("chr", c(seq(22), "X", "Y")))
-
-  if(file.exists(file.path(refdir, "viz_geneisl.rda"))) {
-    load(file.path(refdir, "viz_geneisl.rda"))
-  } else {
-    genetrack=list()
-    isltrack=list()
-    for (i in chroms) {
-      genetrack[[i]]=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=i, genome="hg19",
-                 rstart="exonStarts", rends="exonEnds", gene="name",   symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T)
-      isltrack[[i]]=UcscTrack(track="CpG Islands", chromosome=i, genome="hg19",
-                start="chromStart", end="chromEnd", name="CpG Islands")     
-    }
-    ann=list(genetrack=genetrack, isltrack=isltrack)
-    save(list="ann", file=file.path(refdir, "viz_geneisl.rda"))
-  }
-  return(ann)
-}
-
-
-
 
 region.plot <- function(dat, tab) {
+  require(ggplot2)
+  
+  ##Make sure it's all initialized
+  dat=dat.init(dat)
+  
+  ##Plot top 25 or all dmrs, whichever is less
+  M=min(nrow(tab),25)
+  ##Plot this far (in bp) on either side
+  ADD=2000
+
+  for (i in 1:M) {
+  
+  
+    ##Take probes within this defined region
+    Index=which(dat$locs$chr==tab$chr[i] &
+      dat$locs$pos >= tab$start[i]-ADD &
+      dat$locs$pos <= tab$end[i]+ADD)
+    
+    ##log2 ratio, just these probes
+    yy=dat$Y[Index,]
+
+
+    
+    melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
+
+    print(ggplot(melted, aes(x=off, y=value, colour=factor(status),fill=factor(status)))
+          +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
+          +theme_bw()+opts(title="Region"))
+  
+          
+    ##probe.status=factor(dat$probe.class$anno$type)
+    ##probe.status=probe.status[dat$probe.class$pns[Index]]
+
+    ##probe.col=probe.status
+    ##levels(probe.col)=c("blue", "red", "orange", "green")
+
+    
+  }
+
+}
+
+anno.region.plot <- function(dat, tab) {
   
   require(Gviz)
   require(rtracklayer)
   
   ##Make sure it's all initialized
   dat=dat.init(dat)
-  
-  ##ann=get.tracks(refdir="~/Dropbox/Data/Genetics/General/072312_tracks") 
   
   ##Plot top 25 or all dmrs, whichever is less
   M=min(nrow(tab),25)
@@ -777,32 +807,6 @@ region.plot <- function(dat, tab) {
     ##log2 ratio, just these probes
     yy=dat$Y[Index,]
 
-
-    ##Use size of dots to make small dots, maybe also alpha for dots
-    mtrack=DataTrack(chromosome=tab$chr[i], start=x, width=1, data=ilogit(t(yy)), genome="hg19", name="Beta",
-      groups=type, type="smooth")    
-
-    probe.status=factor(dat$probe.class$anno$type)
-    probe.status=probe.status[dat$probe.class$pns[Index]]
-    probe.col=probe.status
-    levels(probe.col)=c("blue", "red", "orange", "green")
-    ptrack=AnnotationTrack(chromosome=tab$chr[i], start=x, width=1, genome="hg19", name="Probe",
-      feature=probe.status, collapse=T, mergeGroups=T, showId=F, stacking="dense")
-    
-    itrack=IdeogramTrack(genome="hg19", chromosome=tab$chr[i])
-    gtrack=GenomeAxisTrack()
-
-    isltrack=UcscTrack(track="CpG Islands", chromosome=as.character(tab$chr[i]), genome="hg19",start="chromStart", end="chromEnd", name="CpG Islands",
-      from=min(x), to=max(x))     
-
-    genetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(tab$chr[i]), genome="hg19",
-      rstart="exonStarts", rends="exonEnds", gene="name", symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T,
-      from=min(x), to=max(x))
-
-    plotTracks(list(itrack, gtrack, isltrack, genetrack,  mtrack, ptrack), sizes=c(.05, .05, .05, .1, .7, .05), from=min(x), to=max(x), background.title="darkblue",
-               Shore="green", Island="blue", OpenSea="red", Shelf="orange")
-
-    plotTracks(list(genetrack), from=min(x), to=max(x), background.title="darkblue",Shore="green", Island="blue", OpenSea="red", Shelf="orange")
   
   }
 
