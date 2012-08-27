@@ -61,3 +61,6 @@ pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrggplot.pdf")), width=11, heigh
 region.plot(dat, a)
 dev.off()
 
+#Plot blocks now
+#Figure out vmr, vblock
+#Do a bunch of different tests, ignore permute for now
