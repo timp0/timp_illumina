@@ -449,10 +449,12 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
       dat$pd$sex=boyorgirl(total,xIndex,yIndex,plot=TRUE)
       dev.off()
     } else {
-      dat$pd$sex=boyorgirl(total,xIndex,yIndex,plot=TRUE)
+      dat$pd$sex=boyorgirl(total,xIndex,yIndex,plot=FALSE)
     }
   } else {
-    dat$pd$sex=F
+    dat$pd$sex=factor(dat$pd$Sex, levels="m", "f")
+    levels(dat$pd$sex)=c("M", "F")
+    dat$pd$sex[is.na(dat$pd$sex)]="F"
   }
   
 
@@ -467,8 +469,10 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
   return(dat)
 }
 
-dat.preload <- function(plates,filt.thresh=11, plotter=F, plotdir="~/Dropbox/Temp",
+dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Dropbox/Temp",
                         expdatapath="/thumper2/feinbergLab/core/arrays/illumina/") {
+  ##PAY ATTENTION TO filt.thresh(quality threshold) and sex - boyorgirl is not perfect, this has to be checked the first time and defaults
+  ##Set properly
   
   ##Load samples
   RGset=read.450k.exp(base=expdatapath, targets=plates)
@@ -507,7 +511,7 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, plotdir="~/Dropbox/Tem
   dat$pd=dat$pd[meds>filt.thresh,]
   
   ##Quantile normalize using my wrapper function
-  dat=qnorm.subset(dat) 
+  dat=qnorm.subset(dat, plotdir=ifelse(plotter, plotdir,NA), sex=sex )
 }
 
 
@@ -608,7 +612,7 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
 
  
   ##Area is amount of difference*number of probes(clusters in this case)
-  tab=tab[tab$area>0.5,]
+  ##tab=tab[tab$area>0.5,]
   return(tab)
 }
 
