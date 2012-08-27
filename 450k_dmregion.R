@@ -56,8 +56,11 @@ a=dmr.find(dat, grps=sel)
 
 dev.off()
 
-pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrgviz.pdf")), width=11, height=8.5)
-##region.plot(dat, a)
+
+pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrggplot.pdf")), width=11, height=8.5)
+region.plot(dat, a)
 dev.off()
 
- 
+#Plot blocks now
+#Figure out vmr, vblock
+#Do a bunch of different tests, ignore permute for now
