@@ -20,5 +20,7 @@ if (file.exists(file.path(filedir, "ast.rda"))) {
   pd=target[Index,]
 
   dat=dat.preload(plates=pd,plotdir=plotdir,expdatapath=expdatapath)
-  
+
+  save(list="dat", file=file.path(filedir, "ast.rda"))
 }
+
