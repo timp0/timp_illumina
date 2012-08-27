@@ -15,9 +15,6 @@ if (file.exists(file.path(filedir, "thy.rda"))) {
   ##Gets only plate files and loads in basic stuff
   source(file.path(codedir,"450k_cancer_loadin.R"))
   
-  library(limma)
-  library(DNAcopy)
-  
   
   ##to get betas                 
   ##Get just thyroid
