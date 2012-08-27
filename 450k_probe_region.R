@@ -28,14 +28,6 @@ load("tmp.rda")
 
 load("remap_f.rda")
 
-load("~/LData/Genetics/121511_dbSNP/snp135_ucsc.rda")
-##Get just snps which are relevant to these probes and their
-##Single base extentions
-##snp.relevant=snp.list %in% c(remap.probe, sbe)
-##snp.list=snp.list[snp.relevant]
-##save(file="relevantsnp.rda", list="snp.list")
-load("relevantsnp.rda")
-
 
 ##First find the probes which have one and only one match
 num.remap=table(values(remap.probe)$ori.index)
@@ -66,6 +58,28 @@ remap.probe=remap.probe[idx]
 sbe=flank(remap.probe,1)
 g.site=flank(remap.probe,2)
 g.site=psetdiff(g.site, sbe)
+
+
+
+##Get ucsc tracks
+require(rtracklayer)
+
+session=browserSession("UCSC")
+genome(session)="hg19"
+
+##Get new SNP table
+snp.tab=getTable(ucscTableQuery(session, track="All SNPs(135)", range=c(range(remap.probe), range(g.site), range(sbe)), table="snp135"))
+
+load("~/LData/Genetics/121511_dbSNP/snp135_ucsc.rda")
+##Get just snps which are relevant to these probes and their
+##Single base extentions
+##snp.relevant=snp.list %in% c(remap.probe, sbe)
+##snp.list=snp.list[snp.relevant]
+##save(file="relevantsnp.rda", list="snp.list")
+load("relevantsnp.rda")
+
+
+
 
 ##Init sbe snp fields
 values(sbe)$sbe.snp.boo=logical(length(sbe))
@@ -278,3 +292,25 @@ values(gprobes)$locks.idx[z[,1]]=z[,2]
 
 save(file="probe_obj_final.rda", list=c("gprobes", "sbe", "remap.probe"))
 
+#Checking Chris SNPs v. Winston SNPs
+
+filedir="~/Dropbox/Data/Genetics/Infinium/071312_analysis"
+
+x=load(file.path(filedir, "snps_chris.rda"))
+snps.chris=get(x)
+
+
+
+idx=match(rownames(snps.chris), values(remap.probe)$name)
+
+#Check if probe locations match
+
+z=start(remap.probe[idx])==snps.chris$PrStart
+
+#Only the weird ch.# probes don't match up in location
+
+z=values(gprobes[idx])$sbe.snp.boo==(snps.chris$SBEsnp <- RefSeqID!="FALSE")
+a=snps.chris[!z,]
+b=sbe[idx[!z]]
+
+load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/relevantsnp.rda")
