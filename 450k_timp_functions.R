@@ -531,11 +531,12 @@ dat.init <- function(dat) {
     load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/probe_obj_final.rda")
     probey=gprobes
     values(probey)=NULL
-    names(probey)=values(gprobe)$name
+    names(probey)=values(gprobes)$name
     values(probey)$islrelate="OpenSea"
     values(probey)$islrelate[values(gprobes)$dist.island<4001]="Shelf"
     values(probey)$islrelate[values(gprobes)$dist.island<2001]="Shore"
     values(probey)$islrelate[values(gprobes)$dist.island==0]="Island"
+    
     dat$timp.anno$probe=probey
     dat$timp.anno$sample=data.frame(id=dat$pd$Sample.ID, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
       status=dat$pd$Status, pheno=dat$pd$Phenotype, note=dat$pd$Notes)
@@ -623,6 +624,8 @@ cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thr
   ##This function does mds of probes which show a difference, seperated by regional differences
   ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
 
+  require(ggplot2)
+
   dat=dat.init(dat)
   
   ##Temp color assign
@@ -678,8 +681,11 @@ dat.melt <- function(panno, sanno, raw) {
   require(reshape)
   ##This funciton melts data into a ggplot like format
   melted=melt(raw)
+  ##Label columns apporpriately of melted matrix
   names(melted)=c("pid", "sid", "value")
-  melted=cbind(melted, as.data.frame(panno[match(melted$pid, names(panno)),]))
+  ##Add probe annotation - because duplicates in rownames of gprobes->data.frame, row.names=NULL
+  melted=cbind(melted, as.data.frame(panno[match(melted$pid, names(panno))], row.names=NULL))
+  ##Add sample annotation
   melted=cbind(melted, sanno[match(melted$sid, rownames(sanno)),])
   return(melted)
 }
@@ -753,20 +759,19 @@ block.plot <- function(dat, tab) {
   ##Plot this far (in %) on either side
   ADD=0.1
   
-  for (i in 1:M) {    
-    ##Take probes within this defined region
-    Index=which(dat$locs$chr==tab$chr[i] &
-      dat$locs$pos >= tab$start[i]-ADD &
-      dat$locs$pos <= tab$end[i]+ADD)
-    
+  for (i in 1:M) {
+    ##Set range over which we will plot
+    plot.range=resize(tab[i], width=width(tab[i])*1.1, fix="center")
+    pprobes=subsetByOverlaps(dat$timp.anno$probe, plot.range)
+        
     ##log2 ratio, just these probes
-    yy=dat$Y[Index,]
+    yy=dat$Y[rownames(dat$Y) %in% names(pprobes),]
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
     
-    print(ggplot(melted, aes(x=off, y=value, colour=factor(status),fill=factor(status)))
-          +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
-          +theme_bw()+opts(title="Region"))
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
+          +stat_smooth()+geom_jitter(alpha=0.5)
+          +theme_bw()+opts(title=paste0("Region:", i)))
     
     ##probe.status=factor(dat$probe.class$anno$type)
     ##probe.status=probe.status[dat$probe.class$pns[Index]]
@@ -806,7 +811,7 @@ region.plot <- function(dat, tab) {
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
 
-    print(ggplot(melted, aes(x=off, y=value, colour=factor(status),fill=factor(status)))
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
           +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
           +theme_bw()+opts(title="Region"))
   
@@ -864,6 +869,8 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
   require(limma)
   require(DNAcopy)
 
+  probes.min=2
+  
   dat=dat.init(dat)
 
   keep=as.matrix(dat$pd[ccomp])%in%grps
@@ -882,6 +889,10 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     islandName=dat$everything$UCSC_CpG_Islands_Name,
     blocks=dat$probe.class)
 
+  ##filter blocks of less than 2 probes(that's just ridic)
+  blocky=b$tab[values(b$tab)$num.mark>=probes.min]
+  
+  
   ##Permutation testing for block p-value
   if (permute.num>0) {
     cat("Performing", permute.num, "permutations\n")
@@ -919,8 +930,8 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     nulldist=split(v,l)
     
     ##Put the actual data into the same cutoffs
-    obsv <- elementMetadata(b$tab)$seg.mean
-    obsl <-cut(elementMetadata(b$tab)$num.mark,cutoffs,include.lower=TRUE)
+    obsv <- elementMetadata(blocky)$seg.mean
+    obsl <-cut(elementMetadata(blocky)$num.mark,cutoffs,include.lower=TRUE)
     
     ##Group the values in different length groups
     Indexes=split(seq(along=obsv),obsl)
@@ -933,11 +944,11 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
       pvals[tmpind]=sapply(abs(obsv[tmpind]),function(x) mean(x<null))
     }
     
-    elementMetadata(b$tab)$pvals=pvals
+    elementMetadata(blocky)$pvals=pvals
 
   }
 
-  return(b)
+  return(blocky)
 }
 
 
