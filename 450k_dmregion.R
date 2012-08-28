@@ -1,4 +1,4 @@
-codedir="/thumper/repos/timp_illumina"
+codedir="~/thumper/repos/timp_illumina"
 plotdir="/thumper2/feinbergLab/personal/aunterma/SkinAging/Winston"
 filedir="/thumper2/feinbergLab/personal/aunterma/SkinAging/Winston"
 
@@ -21,7 +21,6 @@ if (file.exists(file.path(filedir, "epi.rda"))) {
   snps1=get(x)
   snps1=snps1[match(rownames(dat$meth),snps1$IlmnID),]
   keepIndex=which(snps1$SBEsnp_RefSeqID=="FALSE"&snps1$CGsnp_RefSeqID=="FALSE")
-
   ##Ok - because dat is meth, unmeth, locs, everything (arrays of probes) get rid of annotation at same time
   for(i in 1:4) dat[[i]]=dat[[i]][keepIndex,]
       
@@ -36,7 +35,7 @@ if (file.exists(file.path(filedir, "epi.rda"))) {
   ##save dat file
   save(list=c("dat"),file=file.path(filedir, "epi.rda"))
 }
-
+source("~/thumper/repos/timp_illumina/450k_timp_functions.R")
 dat=dat.init(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_analysis")
 
 sel=c("Old-exposed", "Young-exposed")

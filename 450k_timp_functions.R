@@ -530,7 +530,7 @@ dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_an
   if (!("timp.anno" %in% names(dat))) {
 
    ## load(file.path(refdir,"probe_obj_final.rda")) 
-load("/thumper2/feinbergLab/personal/wtimp/Data/Infinium/121311_analysis/probe_obj_final.rda") 
+   load("/thumper2/feinbergLab/personal/wtimp/Old_Data/Infinium/121311_analysis/probe_obj_final.rda") 
     probey=gprobes
     values(probey)=NULL
     names(probey)=values(gprobes)$name
@@ -540,8 +540,8 @@ load("/thumper2/feinbergLab/personal/wtimp/Data/Infinium/121311_analysis/probe_o
     values(probey)$islrelate[values(gprobes)$dist.island==0]="Island"
     
     dat$timp.anno$probe=probey
-    dat$timp.anno$sample=data.frame(id=dat$pd$Sample.ID, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
-      status=dat$pd$Status, pheno=dat$pd$Phenotype, note=dat$pd$Notes)
+    dat$timp.anno$sample=data.frame(id=dat$pd$Label.1, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
+      status=dat$pd$Status, pheno=dat$pd$Category, note=dat$pd$Cat2)
     rownames(dat$timp.anno$sample)=rownames(dat$pd)   
   }
   return(dat)
@@ -875,7 +875,7 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
   
   dat=dat.init(dat)
 
-  keep=as.matrix(dat$pd[ccomp])%in%grps
+  keep=as.matrix(dat$pd[ccomp])%in%grpso
   type=factor((dat$pd[[ccomp]])[keep],grps)
   
   ##This is determined sex from data, not sex given from annotation

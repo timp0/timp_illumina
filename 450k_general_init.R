@@ -22,7 +22,7 @@ library(DNAcopy)
 ##ls("package:minfi")
 
 ##Get probe/snp map
-load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/probe_obj_final.rda")
+load("/thumper2/feinbergLab/personal/wtimp/Old_Data/Infinium/121311_analysis/probe_obj_final.rda") 
 
 ##Probes with no problems SNPs
 good.probes=values(gprobes)$minfi.idx[(!values(gprobes)$sbe.snp.boo)&
