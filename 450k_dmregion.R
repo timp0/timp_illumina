@@ -45,6 +45,7 @@ dmr=dmr.find(dat, grps=sel)
 
 
 
+
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
 cg.cluster(dat, grps=sel)
 dev.off()

@@ -515,7 +515,7 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Drop
 }
 
 
-dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_analysis") {
+dat.init <- function(dat) {
   ##Make sure data variable is initialized properly
   require(limma)
   
@@ -529,7 +529,7 @@ dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_an
 
   if (!("timp.anno" %in% names(dat))) {
 
-    load(file.path(refdir, "probe_obj_final.rda"))
+    load("/thumper2/feinbergLab/personal/wtimp/Data/Infinium/121311_analysis/probe_obj_final.rda") 
     probey=gprobes
     values(probey)=NULL
     names(probey)=values(gprobes)$name
