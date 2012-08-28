@@ -1,6 +1,3 @@
-##Ok -this function is to be designed to easily give us stats of various Tissue types and or
-##Phenotypes as a subset of the data we have
-
 winsor.probes <- function(subdata, per=0.05,
                            winsor=F, quantile=F) {
   ##Lots of fast row operations
@@ -16,7 +13,6 @@ winsor.probes <- function(subdata, per=0.05,
     beta=subdata
   }
 
-  
   if (quantile) {
     ##Could use quantile - which is more discrete, doesn't assume normal, but
     ##pretty much *will* exclude a value
@@ -111,8 +107,6 @@ tis.pheno <- function(data.anno) {
   freqs=table(factor(data.anno$Tissue), factor(data.anno$Phenotype, levels=desired.pheno.order))
   return(freqs)
 }
-
-
 
 col.pheno <- function(pheno) {
   
@@ -214,7 +208,6 @@ mad.ftest <- function(grp1, grp2) {
   return(result)
 }
 
-
 incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   
   grp1.beta=beta.trim(grp1, trim=T)
@@ -241,7 +234,6 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   rownames(result)=NULL
   return(result)
 }
-
 
 CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F,
                      col.p=T) {
@@ -356,7 +348,6 @@ CpG.pheno.density <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
 }
 
 
-
 PCA.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   ##This function is designed to spit out a plot of the methylation for a given CpG
   ##plotting the different tissues/phenotypes separately
@@ -468,6 +459,7 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
 
   return(dat)
 }
+
 
 dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Dropbox/Temp",
                         expdatapath="/thumper2/feinbergLab/core/arrays/illumina/") {
@@ -611,10 +603,10 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
     tab$pv = 1-Fn(abs(tab$area))    
   }
 
- 
-  ##Area is amount of difference*number of probes(clusters in this case)
-  ##tab=tab[tab$area>0.5,]
-  return(tab)
+  dmr=GRanges(seqnames=tab$chr, strand="*", range=IRanges(start=tab$start, end=tab$end))
+  values(dmr)=tab[,4:dim(tab)[2]]
+  
+  return(dmr)
 }
 
 
@@ -746,7 +738,7 @@ raw.get.tracks <- function(refdir="~/temp") {
 
 }
 
-block.plot <- function(dat, tab) {
+range.plot <- function(dat, tab) {
   ##Plot blocks
   ##Incoming tab is z$tab
 
@@ -771,7 +763,8 @@ block.plot <- function(dat, tab) {
     
     print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
           +stat_smooth()+geom_jitter(alpha=0.5)
-          +theme_bw()+opts(title=paste0("Region:", i)))
+          +theme_bw()+
+          opts(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range)))))
     
     ##probe.status=factor(dat$probe.class$anno$type)
     ##probe.status=probe.status[dat$probe.class$pns[Index]]
@@ -786,7 +779,7 @@ block.plot <- function(dat, tab) {
 
 
 
-region.plot <- function(dat, tab) {
+tab.region.plot <- function(dat, tab) {
   require(ggplot2)
 
   ##Make sure it's all initialized
