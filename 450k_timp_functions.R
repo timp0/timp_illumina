@@ -525,17 +525,17 @@ dat.init <- function(dat) {
 
   if (!("timp.anno" %in% names(dat))) {
     load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/probe_obj_final.rda")
-    probey=as.data.frame(gprobes)
-    probey$islrelate="OpenSea"
-    probey$islrelate[probey$dist.island<4001]="Shelf"
-    probey$islrelate[probey$dist.island<2001]="Shore"
-    probey$islrelate[probey$dist.island==0]="Island"
-    dat$timp.anno$probe=data.frame(chr=probey$seqnames, off=probey$start, islrelate=probey$islrelate)
-    rownames(dat$timp.anno$probe)=probey$name
+    probey=gprobes
+    values(probey)=NULL
+    names(probey)=values(gprobe)$name
+    values(probey)$islrelate="OpenSea"
+    values(probey)$islrelate[values(gprobes)$dist.island<4001]="Shelf"
+    values(probey)$islrelate[values(gprobes)$dist.island<2001]="Shore"
+    values(probey)$islrelate[values(gprobes)$dist.island==0]="Island"
+    dat$timp.anno$probe=probey
     dat$timp.anno$sample=data.frame(id=dat$pd$Sample.ID, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
       status=dat$pd$Status, pheno=dat$pd$Phenotype, note=dat$pd$Notes)
-    rownames(dat$timp.anno$sample)=rownames(dat$pd)
-    
+    rownames(dat$timp.anno$sample)=rownames(dat$pd)   
   }
   return(dat)
 }
@@ -675,7 +675,7 @@ dat.melt <- function(panno, sanno, raw) {
   ##This funciton melts data into a ggplot like format
   melted=melt(raw)
   names(melted)=c("pid", "sid", "value")
-  melted=cbind(melted, panno[match(melted$pid, rownames(panno)),])
+  melted=cbind(melted, as.data.frame(panno[match(melted$pid, names(panno)),]))
   melted=cbind(melted, sanno[match(melted$sid, rownames(sanno)),])
   return(melted)
 }
@@ -736,10 +736,50 @@ raw.get.tracks <- function(refdir="~/temp") {
 
 }
 
+block.plot <- function(dat, tab) {
+  ##Plot blocks
+  ##Incoming tab is z$tab
+
+  ##Make sure it's all initialized
+  dat=dat.init(dat)
+
+  ##Plot first 25 blocks
+  M=25
+
+  ##Plot this far (in %) on either side
+  ADD=0.1
+  
+  for (i in 1:M) {    
+    ##Take probes within this defined region
+    Index=which(dat$locs$chr==tab$chr[i] &
+      dat$locs$pos >= tab$start[i]-ADD &
+      dat$locs$pos <= tab$end[i]+ADD)
+    
+    ##log2 ratio, just these probes
+    yy=dat$Y[Index,]
+    
+    melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
+    
+    print(ggplot(melted, aes(x=off, y=value, colour=factor(status),fill=factor(status)))
+          +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
+          +theme_bw()+opts(title="Region"))
+    
+    ##probe.status=factor(dat$probe.class$anno$type)
+    ##probe.status=probe.status[dat$probe.class$pns[Index]]
+    
+    ##probe.col=probe.status
+    ##levels(probe.col)=c("blue", "red", "orange", "green")
+    
+    
+  }
+  
+}
+
+
 
 region.plot <- function(dat, tab) {
   require(ggplot2)
-  
+
   ##Make sure it's all initialized
   dat=dat.init(dat)
   
@@ -749,7 +789,6 @@ region.plot <- function(dat, tab) {
   ADD=2000
 
   for (i in 1:M) {
-  
   
     ##Take probes within this defined region
     Index=which(dat$locs$chr==tab$chr[i] &

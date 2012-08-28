@@ -21,7 +21,7 @@ if (file.exists(file.path(filedir, "thy.rda"))) {
   dat=dat.preload(plates=plates[plates$Tissue %in% "thyroid",],filt.thresh=11)
   
   ##TAKE OUT SNPS- Chris
-  x=load(file.path(filedir, "snps_chris.rda"))
+  x=load(file.path("~/Dropbox/Data/Genetics/Infinium/071312_analysis", "snps_chris.rda"))
   snps1=get(x)
   snps1=snps1[match(rownames(dat$meth),snps1$IlmnID),]
   keepIndex=which(snps1$SBEsnp_RefSeqID=="FALSE"&snps1$CGsnp_RefSeqID=="FALSE")
