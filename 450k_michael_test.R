@@ -17,9 +17,9 @@ if (file.exists(file.path(filedir, "ast.rda"))) {
 
   ##Now we subset Micahel's data out of Yun's.
   Index=which(target[,"Experimenter"]=="Michael") 
-  pd=target[Index,]
+  target=target[Index,]
 
-  dat=dat.preload(plates=pd,plotdir=plotdir,expdatapath=expdatapath)
+  dat=dat.preload(plates=target,plotdir=plotdir,expdatapath=expdatapath, plotter=T,sex=F)
 
   save(list="dat", file=file.path(filedir, "ast.rda"))
 }
