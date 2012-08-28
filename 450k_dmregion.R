@@ -37,7 +37,7 @@ if (file.exists(file.path(filedir, "epi.rda"))) {
   save(list=c("dat"),file=file.path(filedir, "epi.rda"))
 }
 
-dat=dat.init(dat, refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_analysis")
+dat=dat.init(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_analysis")
 
 sel=c("Old-exposed", "Young-exposed")
 block=block.finding(dat, grps=sel, permute.num=0)
