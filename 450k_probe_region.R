@@ -111,6 +111,7 @@ values(remap.probe)$snp.name=character(length(remap.probe))
 values(remap.probe)$snp.dist=numeric(length(remap.probe))
 values(remap.probe)$snp.het=numeric(length(remap.probe))
 
+
 ##Added to distinguish probes w/o snps - their distance to snp is -1 by default
 values(remap.probe)$snp.dist=-1
 
@@ -139,6 +140,10 @@ values(remap.probe[snp.present])$snp.het=
 
 ##Do the same, but just for snps with nonzero het score
 ##Have to redo because of the case of multiple snps in probe, some may not be het
+
+values(remap.probe)$hetsnp.name=character(length(remap.probe))
+values(remap.probe)$hetsnp.dist=numeric(length(remap.probe))
+values(remap.probe)$hetsnp.het=numeric(length(remap.probe))
 
 het.snp.list=snp.list[values(snp.list)$avHet>0]
 
