@@ -561,7 +561,7 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   type=factor((dat$pd[[ccomp]])[keep],grps)
   
   ##This is determined sex from data, not sex given from annotation
-  sex=factor(dat$pd$sex[keep],c("M","F"))
+  sex=factor(dat$pd$sex[keep],c("M","F")) 
   X=model.matrix(~type+sex)
 
   ##Cluster the probes
@@ -581,9 +581,10 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   ##Use t-statistic of difference for region finding in this case, could also have used
   ##fit coef[,2] which is the difference from the linear model fit)
   ##ss=fit$coef[,2]
-  
+ ##tab=regionFinder(ss,pns,dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
   tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
   ##Need a cr here, regionFinder ... or it looks weird.
+
   cat("\n")
   ##Also - rownames of tab are awfully useless - figure out what the right piece of info is, I think it's probably pns
   
@@ -771,7 +772,7 @@ block.plot <- function(dat, tab) {
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
     
-    print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(note),fill=factor(note)))
           +stat_smooth()+geom_jitter(alpha=0.5)
           +theme_bw()+opts(title=paste0("Region:", i)))
     
@@ -812,8 +813,7 @@ region.plot <- function(dat, tab) {
 
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
-
-    print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(note),fill=factor(note)))
           +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
           +theme_bw()+opts(title="Region"))
   
