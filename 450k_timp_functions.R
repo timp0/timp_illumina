@@ -528,7 +528,8 @@ dat.init <- function(dat) {
     values(probey)$islrelate[values(gprobes)$dist.island<4001]="Shelf"
     values(probey)$islrelate[values(gprobes)$dist.island<2001]="Shore"
     values(probey)$islrelate[values(gprobes)$dist.island==0]="Island"
-    
+    ##Remove filtered out probes
+    probey=probey[names(probey) %in% rownames(dat$Y)]
     dat$timp.anno$probe=probey
     dat$timp.anno$sample=data.frame(id=dat$pd$Sample.ID, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
       status=dat$pd$Status, pheno=dat$pd$Phenotype, note=dat$pd$Notes)
@@ -739,14 +740,16 @@ raw.get.tracks <- function(refdir="~/temp") {
 }
 
 range.plot <- function(dat, tab) {
-  ##Plot blocks
-  ##Incoming tab is z$tab
+  ##Incoming tab is a GRanges
 
+  require(GenomicRanges)
+  require(ggplot2)
+  
   ##Make sure it's all initialized
   dat=dat.init(dat)
 
   ##Plot first 25 blocks
-  M=25
+  M=min(length(tab), 25)
 
   ##Plot this far (in %) on either side
   ADD=0.1
@@ -776,7 +779,6 @@ range.plot <- function(dat, tab) {
   }
   
 }
-
 
 
 tab.region.plot <- function(dat, tab) {
@@ -821,34 +823,64 @@ tab.region.plot <- function(dat, tab) {
 }
 
 anno.region.plot <- function(dat, tab) {
+  ##Plot with annotaiton objects
   
   require(Gviz)
-  require(rtracklayer)
-  
+
   ##Make sure it's all initialized
   dat=dat.init(dat)
-  
-  ##Plot top 25 or all dmrs, whichever is less
-  M=min(nrow(tab),25)
-  ##Plot this far (in bp) on either side
-  ADD=2000
 
-  type=dat$pd$Phenotype
+  ##Add sample annotation
+  sampy=dat$timp.anno$sample[match(colnames(dat$Y), rownames(dat$timp.anno$sample)),]
+  
+  ##Plot first 25 blocks
+  M=min(length(tab),25)
+
+  ##Plot this far (in %) on either side
+  ADD=0.1
   
   for (i in 1:M) {
-  
-  
-    ##Take probes within this defined region
-    Index=which(dat$locs$chr==tab$chr[i] &
-      dat$locs$pos >= tab$start[i]-ADD &
-      dat$locs$pos <= tab$end[i]+ADD)
     
-    ##x is genomic position
-    x=dat$locs$pos[Index]
-    ##log2 ratio, just these probes
-    yy=dat$Y[Index,]
+    ##Set range over which we will plot
+    plot.range=resize(tab[i], width=width(tab[i])*(1+ADD), fix="center")
+    pprobes=subsetByOverlaps(dat$timp.anno$probe, plot.range)
 
-  
+    ##Remove strand info(unneeded complication in this case)
+    strand(pprobes)="*"
+    
+    plot.area=range(pprobes)
+    
+    ##log2 ratio, just these probes
+    yy=dat$Y[match(names(pprobes), rownames(dat$Y)),]
+
+    ##DO: Use size of dots to make small dots, maybe also alpha for dots
+    ##Data track
+    mtrack=DataTrack(pprobes, data=t(yy),
+      genome="hg19", name="Beta",groups=sampy$status, type="smooth")    
+
+    ptrack=AnnotationTrack(pprobes, genome="hg19", name="Probes",
+      feature=values(pprobes)$islrelate, collapse=T, mergeGroups=T, showId=F,
+      stacking="dense",Shore="green", Island="blue", OpenSea="red", Shelf="orange")
+    
+    isltrack=UcscTrack(track="CpG Islands",chromosome=as.character(seqnames(plot.area)),
+      from=start(plot.area), to=end(plot.area), genome="hg19",
+      start="chromStart", end="chromEnd", name="CpG Islands")
+      
+    genetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(seqnames(plot.area)), genome="hg19",
+      rstart="exonStarts", rends="exonEnds", gene="name", symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T,
+      from=start(plot.area), to=end(plot.area))
+    
+    itrack=IdeogramTrack(genome="hg19", chromosome=as.character(seqnames(tab[1])))
+    gtrack=GenomeAxisTrack()
+
+    ##Workaround for broken GViz
+    ##IF no exons in region
+    if (countOverlaps(plot.area, ranges(genetrack))==0) {
+      genetrack=GeneRegionTrack(name="Intron")
+    }
+    
+    plotTracks(list(itrack, gtrack, genetrack, mtrack, isltrack, ptrack),background.title="darkblue", from=start(plot.area), to=end(plot.area))
+             
   }
 
 }

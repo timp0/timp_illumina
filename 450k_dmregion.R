@@ -41,6 +41,8 @@ if (file.exists(file.path(filedir, "thy.rda"))) {
   save(list=c("dat"),file=file.path(filedir, "thy.rda"))
 }
 
+dat=dat.init(dat)
+
 sel=c("normal", "cancer")
 block=block.finding(dat, grps=sel, permute.num=0)
 dmr=dmr.find(dat, grps=sel)
@@ -58,5 +60,12 @@ pdf(file.path(plotdir, paste0(sel[1], sel[2], "blockggplot.pdf")), width=11, hei
 range.plot(dat, block)
 dev.off()
 
+##Gviz plots!
+pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrgviz.pdf")), width=11, height=8.5)
+anno.region.plot(dat, dmr)
+dev.off()
+
+##Make plots more flexible(colored lines for different sample types, colored ribbon for iqr range instead of loess 95%?  
 #Figure out vmr, vblock
+
 #Do a bunch of different tests, ignore permute for now
