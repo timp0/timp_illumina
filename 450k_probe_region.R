@@ -19,9 +19,6 @@ chr.list=c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8",
   "chr20", "chr21", "chr22", "chrX", "chrY")
 
 
-
-
-
 setwd("~/Dropbox/Data/Genetics/Infinium/121311_analysis")
 load("tmp.rda")
 
@@ -58,25 +55,20 @@ remap.probe=remap.probe[idx]
 sbe=flank(remap.probe,1)
 g.site=flank(remap.probe,2)
 g.site=psetdiff(g.site, sbe)
+values(g.site)=values(sbe)
 
 
+if (file.exists("relevantsnp.rda")) {
+  load("relevantsnp.rda")
+} else {
+  load("~/LData/Genetics/121511_dbSNP/snp135_ucsc.rda")
+  ##Get just snps which are relevant to these probes and their
+  ##Single base extentions
+  int.area=resize(remap.probe, width=width(remap.probe)+2, fix="end")
+  snp.list=subsetByOverlaps(snp.list, int.area)
+  save(file="relevantsnp.rda", list="snp.list")
+}
 
-##Get ucsc tracks
-require(rtracklayer)
-
-session=browserSession("UCSC")
-genome(session)="hg19"
-
-##Get new SNP table
-snp.tab=getTable(ucscTableQuery(session, track="All SNPs(135)", range=c(range(remap.probe), range(g.site), range(sbe)), table="snp135"))
-
-load("~/LData/Genetics/121511_dbSNP/snp135_ucsc.rda")
-##Get just snps which are relevant to these probes and their
-##Single base extentions
-##snp.relevant=snp.list %in% c(remap.probe, sbe)
-##snp.list=snp.list[snp.relevant]
-##save(file="relevantsnp.rda", list="snp.list")
-load("relevantsnp.rda")
 
 
 
@@ -88,12 +80,13 @@ values(sbe)$sbe.snp.het=numeric(length(sbe))
 ##Match SBE to SNP
 sbe.snp=findOverlaps(sbe, snp.list, select="first")
 snp.present=!is.na(sbe.snp)
+sbe.snp=sbe.snp[snp.present]
 ##Use match
-values(sbe)$sbe.snp.boo[snp.present]=T
-values(sbe)$sbe.snp.name[snp.present]=
-  values(snp.list)$name[sbe.snp[snp.present]]
-values(sbe)$sbe.snp.het[snp.present]=
-  values(snp.list)$avHet[sbe.snp[snp.present]]
+values(sbe[snp.present])$sbe.snp.boo=T
+values(sbe[snp.present])$sbe.snp.name=
+  as.character(values(snp.list[sbe.snp])$name)
+values(sbe[snp.present])$sbe.snp.het=
+  values(snp.list[sbe.snp])$avHet
 
 ##Init g.site snp fields
 values(g.site)$g.site.snp.boo=logical(length(g.site))
@@ -102,12 +95,13 @@ values(g.site)$g.site.snp.het=numeric(length(g.site))
 ##Match G.SITE to SNP
 g.site.snp=findOverlaps(g.site, snp.list, select="first")
 snp.present=!is.na(g.site.snp)
+g.site.snp=g.site.snp[snp.present]
 ##Use match
-values(g.site)$g.site.snp.boo[snp.present]=T
-values(g.site)$g.site.snp.name[snp.present]=
-  values(snp.list)$name[g.site.snp[snp.present]]
-values(g.site)$g.site.snp.het[snp.present]=
-  values(snp.list)$avHet[g.site.snp[snp.present]]
+values(g.site[snp.present])$g.site.snp.boo=T
+values(g.site[snp.present])$g.site.snp.name=
+  as.character(values(snp.list[g.site.snp])$name)
+values(g.site[snp.present])$g.site.snp.het=
+  values(snp.list[g.site.snp])$avHet
 
 
 ##Repeat for whole probe 
@@ -124,32 +118,27 @@ values(remap.probe)$snp.dist=-1
 ##By using first, get the one closest to the 3' end
 remap.probe.snp=findOverlaps(remap.probe, snp.list, select="first")
 snp.present=!is.na(remap.probe.snp)
-
-##This is interesting code for getting out all characteristics of a factor
-##Might be useful
-##system.time(df[ df$v1 == ave(df$v1, df$f, FUN=min), ])
-
-#########SNPS are too long
-
+remap.probe.snp=remap.probe.snp[snp.present]
 ##Use match
 
 values(remap.probe)$num.snps=countOverlaps(remap.probe, snp.list)
 values(remap.probe)$boo.snps=values(remap.probe)$num.snps>0
 
-values(remap.probe)$snp.name[snp.present]=
-  values(snp.list)$name[remap.probe.snp[snp.present]]
+values(remap.probe[snp.present])$snp.name=
+  as.character(values(snp.list[remap.probe.snp])$name)
 
 ##Get the start base location - use
 three.prime=resize(remap.probe[snp.present],1)
 
-values(remap.probe)$snp.dist[snp.present]=
-  width(pgap(three.prime, snp.list[remap.probe.snp[snp.present]]))
+values(remap.probe[snp.present])$snp.dist=
+  width(pgap(three.prime, snp.list[remap.probe.snp]))
 
-values(remap.probe)$snp.het[snp.present]=
-  values(snp.list)$avHet[remap.probe.snp[snp.present]]
+values(remap.probe[snp.present])$snp.het=
+  values(snp.list[remap.probe.snp])$avHet
 
 
 ##Do the same, but just for snps with nonzero het score
+##Have to redo because of the case of multiple snps in probe, some may not be het
 
 het.snp.list=snp.list[values(snp.list)$avHet>0]
 
@@ -157,21 +146,21 @@ het.snp.list=snp.list[values(snp.list)$avHet>0]
 ##By using first, get the one closest to the 3' end
 remap.probe.hetsnp=findOverlaps(remap.probe, het.snp.list, select="first")
 snp.present=!is.na(remap.probe.hetsnp)
-
+remap.probe.hetsnp=remap.probe.hetsnp[snp.present]
 
 ##Use match
 
 values(remap.probe)$num.hetsnps=countOverlaps(remap.probe, het.snp.list)
 values(remap.probe)$boo.hetsnps=values(remap.probe)$num.hetsnps>0
 
-values(remap.probe)$hetsnp.name[snp.present]=
-  values(het.snp.list)$name[remap.probe.snp[snp.present]]
+values(remap.probe[snp.present])$hetsnp.name=
+  as.character(values(het.snp.list[remap.probe.hetsnp])$name)
 
 ##Get the start base location - use
 three.prime=resize(remap.probe[snp.present],1)
 
 values(remap.probe)$hetsnp.dist[snp.present]=
-  width(pgap(three.prime, het.snp.list[remap.probe.hetsnp[snp.present]]))
+  width(pgap(three.prime, het.snp.list[remap.probe.hetsnp]))
 
 values(remap.probe)$hetsnp.het[snp.present]=
   values(het.snp.list)$avHet[remap.probe.hetsnp[snp.present]]
@@ -309,8 +298,8 @@ z=start(remap.probe[idx])==snps.chris$PrStart
 
 #Only the weird ch.# probes don't match up in location
 
-z=values(gprobes[idx])$sbe.snp.boo==(snps.chris$SBEsnp <- RefSeqID!="FALSE")
+z=values(gprobes[idx])$sbe.snp.boo==(snps.chris$SBEsnp_RefSeqID!="FALSE")
 a=snps.chris[!z,]
 b=sbe[idx[!z]]
 
-load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/relevantsnp.rda")
+
