@@ -614,6 +614,8 @@ vmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
                      permute.num=0) {
   ##This function finds VMR, very similiar to dmr.find
 
+  require(matrixStats)
+  
   dat=dat.init(dat)
    
   ##Select samples that are relevant for VMR finding
@@ -626,6 +628,14 @@ vmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   sex=factor(dat$pd$sex[keep],c("M","F"))
   X=model.matrix(~type+sex)
 
+
+  ##Fit linear model, get out differences per block
+  fit=lmFit(y,X)
+  ##Get residuals from model - aka distance from fitted value
+  vM=abs(residuals(fit, y))
+  ##Fit using the resiudals instead
+  vfit=lmFit(vM, X)
+  
   ##Cluster the probes
   pns=clusterMaker(dat$locs$chr, dat$locs$pos, maxGap=MG)
   ##Number of probes per cluster
@@ -634,52 +644,20 @@ vmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   pnsind=which(pns%in%as.numeric(names(which((Ns>MNP)))))
 
   ##Get the differential methylation (beta) for summary
-  dm=rowMeans(ilogit(y[,type==grps[1]]))-rowMeans(ilogit(y[,type==grps[2]]))
-  s=apply(y,1,mad)
-
-  ##Fit linear model, get out differences per block
-  fit=lmFit(y,X)
-  eb=ebayes(fit)
+  dm=rowSds(ilogit(y[,type==grps[1]]))-rowMeans(ilogit(y[,type==grps[2]]))   
+  eb=ebayes(vfit)
   
-  ##Use t-statistic of difference for region finding in this case, could also have used
-  ##fit coef[,2] which is the difference from the linear model fit)
-  ##ss=fit$coef[,2]
-  
-  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+  ##Use default
+  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, ind=pnsind, cutoff=0)
   ##Need a cr here, regionFinder ... or it looks weird.
   cat("\n")
-  ##Also - rownames of tab are awfully useless - figure out what the right piece of info is, I think it's probably pns
+  ##Filter out vdmr that are only one probe
+  tab=tab[tab$L>1,]
+   
+  vmr=GRanges(seqnames=tab$chr, strand="*", range=IRanges(start=tab$start, end=tab$end))
+  values(vmr)=tab[,4:dim(tab)[2]]
   
-  ##Permutation testing for dmr p-value - is this p-value or q-vaule?  Semantics?
-  if (permute.num>0) {
-    cat("Performing", permute.num, "permutations\n")
-    
-    L <- vector("list",permute.num)
-    for(j in 1:permute.num){      
-      cat(j,"")
-      sX=model.matrix(~sample(type)+sex)
-      ##Fit linear model, get out differences per block
-      n.fit=lmFit(y,sX)
-      n.eb=ebayes(n.fit)
-      
-      n.tab=regionFinder(n.eb$t[,2], pns, dat$locs$chr, dat$locs$pos, cutoff=cutoff, ind=pnsind)
-      
-      ##Abs of area for distribution
-      L[[j]]<-abs(n.tab$area)
-      cat(length(L[[j]]),"\n")
-    }
-     
-    l=unlist(L)
-
-    Fn = ecdf(l+1e-9)
-
-    tab$pv = 1-Fn(abs(tab$area))    
-  }
-
-  dmr=GRanges(seqnames=tab$chr, strand="*", range=IRanges(start=tab$start, end=tab$end))
-  values(dmr)=tab[,4:dim(tab)[2]]
-  
-  return(dmr)
+  return(vmr)
 }
 
 

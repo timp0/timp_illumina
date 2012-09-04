@@ -44,6 +44,7 @@ if (file.exists(file.path(filedir, "thy.rda"))) {
 dat=dat.init(dat)
 
 sel=c("normal", "cancer")
+
 block=block.finding(dat, grps=sel, permute.num=0)
 dmr=dmr.find(dat, grps=sel)
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
