@@ -284,7 +284,7 @@ values(gprobes)$locks.idx=numeric(length(gprobes))
 values(gprobes)$locks.boo[z[,1]]=T
 values(gprobes)$locks.idx[z[,1]]=z[,2]
 
-save(file="probe_obj_final.rda", list=c("gprobes", "sbe", "remap.probe"))
+save(file="probe_obj_final.rda", compress="gzip", list=c("gprobes", "sbe", "remap.probe"))
 
 #Checking Chris SNPs v. Winston SNPs
 
