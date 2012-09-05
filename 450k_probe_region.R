@@ -10,7 +10,6 @@ library(GenomicRanges)
 
 source("~/Code/timp_genetics/region_tools.R")
 
-
 ##Get chromosome names
 seqnames <- seqnames(Hsapiens)
 
@@ -284,7 +283,9 @@ values(gprobes)$locks.idx=numeric(length(gprobes))
 values(gprobes)$locks.boo[z[,1]]=T
 values(gprobes)$locks.idx[z[,1]]=z[,2]
 
-save(file="probe_obj_final.rda", compress="gzip", list=c("gprobes", "sbe", "remap.probe"))
+datadir=("~/Code/timp_illumina/timp_illumina_data")
+
+save(file=file.path(datadir, "probe_obj_final.rda"), compress="gzip", list=c("gprobes", "sbe", "remap.probe"))
 
 #Checking Chris SNPs v. Winston SNPs
 

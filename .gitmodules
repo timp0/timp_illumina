@@ -1,0 +1,3 @@
+[submodule "timp_illumina_data"]
+	path = timp_illumina_data
+	url = git@bitbucket.org:timp0/timp_illumina_data.git
