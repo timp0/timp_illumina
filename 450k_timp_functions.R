@@ -507,7 +507,7 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Drop
 }
 
 
-dat.init <- function(dat) {
+dat.init <- function(dat, codedir="~/Code/timp_illumina") {
   ##Make sure data variable is initialized properly
   require(limma)
   
@@ -520,7 +520,7 @@ dat.init <- function(dat) {
   }
 
   if (!("timp.anno" %in% names(dat))) {
-    load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/probe_obj_final.rda")
+    load(file.path(codedir, "timp_illumina_data", "probe_obj_final.rda"))
     probey=gprobes
     values(probey)=NULL
     names(probey)=values(gprobes)$name
@@ -648,11 +648,11 @@ vmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   eb=ebayes(vfit)
   
   ##Use default
-  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, ind=pnsind, cutoff=0)
+  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, ind=pnsind, cutoff=quantile(abs(eb$t[,2]),.95))
   ##Need a cr here, regionFinder ... or it looks weird.
   cat("\n")
   ##Filter out vdmr that are only one probe
-  tab=tab[tab$L>1,]
+  tab=tab[tab$L>2,]
    
   vmr=GRanges(seqnames=tab$chr, strand="*", range=IRanges(start=tab$start, end=tab$end))
   values(vmr)=tab[,4:dim(tab)[2]]
@@ -789,7 +789,7 @@ raw.get.tracks <- function(refdir="~/temp") {
 
 }
 
-range.plot <- function(dat, tab) {
+range.plot <- function(dat, tab, grp="status") {
   ##Incoming tab is a GRanges
 
   require(GenomicRanges)
@@ -814,7 +814,7 @@ range.plot <- function(dat, tab) {
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
     
-    print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
+    print(ggplot(melted, aes_string(x="start", y="value", colour=grp,fill=grp))
           +stat_smooth()+geom_jitter(alpha=0.5)
           +theme_bw()+
           opts(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range)))))
@@ -872,7 +872,7 @@ tab.region.plot <- function(dat, tab) {
 
 }
 
-anno.region.plot <- function(dat, tab) {
+anno.region.plot <- function(dat, tab, grp="status") {
   ##Plot with annotaiton objects
   
   require(Gviz)
@@ -883,8 +883,8 @@ anno.region.plot <- function(dat, tab) {
   ##Add sample annotation
   sampy=dat$timp.anno$sample[match(colnames(dat$Y), rownames(dat$timp.anno$sample)),]
   
-  ##Plot first 25 blocks
-  M=min(length(tab),25)
+  ##Plot first 5 blocks
+  M=min(length(tab),5)
 
   ##Plot this far (in %) on either side
   ADD=0.1
@@ -906,7 +906,7 @@ anno.region.plot <- function(dat, tab) {
     ##DO: Use size of dots to make small dots, maybe also alpha for dots
     ##Data track
     mtrack=DataTrack(pprobes, data=t(yy),
-      genome="hg19", name="Beta",groups=sampy$status, type="smooth")    
+      genome="hg19", name="Beta",groups=sampy[[grp]], type="smooth")    
 
     ptrack=AnnotationTrack(pprobes, genome="hg19", name="Probes",
       feature=values(pprobes)$islrelate, collapse=T, mergeGroups=T, showId=F,
