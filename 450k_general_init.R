@@ -15,6 +15,8 @@ expdatapath="/thumper2/feinbergLab/core/arrays/illumina/"
 ##This is the local(expanded) version of minfi
 library(minfi)
 library(minfiLocal)
+library(limma)
+library(DNAcopy)
 
 ##This will list commands
 ##ls("package:minfi")

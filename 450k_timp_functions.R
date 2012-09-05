@@ -1,6 +1,3 @@
-##Ok -this function is to be designed to easily give us stats of various Tissue types and or
-##Phenotypes as a subset of the data we have
-
 winsor.probes <- function(subdata, per=0.05,
                            winsor=F, quantile=F) {
   ##Lots of fast row operations
@@ -16,7 +13,6 @@ winsor.probes <- function(subdata, per=0.05,
     beta=subdata
   }
 
-  
   if (quantile) {
     ##Could use quantile - which is more discrete, doesn't assume normal, but
     ##pretty much *will* exclude a value
@@ -111,8 +107,6 @@ tis.pheno <- function(data.anno) {
   freqs=table(factor(data.anno$Tissue), factor(data.anno$Phenotype, levels=desired.pheno.order))
   return(freqs)
 }
-
-
 
 col.pheno <- function(pheno) {
   
@@ -214,7 +208,6 @@ mad.ftest <- function(grp1, grp2) {
   return(result)
 }
 
-
 incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   
   grp1.beta=beta.trim(grp1, trim=T)
@@ -241,7 +234,6 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   rownames(result)=NULL
   return(result)
 }
-
 
 CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F,
                      col.p=T) {
@@ -356,7 +348,6 @@ CpG.pheno.density <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
 }
 
 
-
 PCA.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   ##This function is designed to spit out a plot of the methylation for a given CpG
   ##plotting the different tissues/phenotypes separately
@@ -449,10 +440,12 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
       dat$pd$sex=boyorgirl(total,xIndex,yIndex,plot=TRUE)
       dev.off()
     } else {
-      dat$pd$sex=boyorgirl(total,xIndex,yIndex,plot=TRUE)
+      dat$pd$sex=boyorgirl(total,xIndex,yIndex,plot=FALSE)
     }
   } else {
-    dat$pd$sex=F
+    dat$pd$sex=factor(dat$pd$Sex, levels="m", "f")
+    levels(dat$pd$sex)=c("M", "F")
+    dat$pd$sex[is.na(dat$pd$sex)]="F"
   }
   
 
@@ -467,8 +460,11 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
   return(dat)
 }
 
-dat.preload <- function(plates,filt.thresh=11, plotter=F, plotdir="~/Dropbox/Temp",
+
+dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Dropbox/Temp",
                         expdatapath="/thumper2/feinbergLab/core/arrays/illumina/") {
+  ##PAY ATTENTION TO filt.thresh(quality threshold) and sex - boyorgirl is not perfect, this has to be checked the first time and defaults
+  ##Set properly
   
   ##Load samples
   RGset=read.450k.exp(base=expdatapath, targets=plates)
@@ -507,7 +503,7 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, plotdir="~/Dropbox/Tem
   dat$pd=dat$pd[meds>filt.thresh,]
   
   ##Quantile normalize using my wrapper function
-  dat=qnorm.subset(dat) 
+  dat=qnorm.subset(dat, plotdir=ifelse(plotter, plotdir,NA), sex=sex )
 }
 
 
@@ -525,17 +521,19 @@ dat.init <- function(dat) {
 
   if (!("timp.anno" %in% names(dat))) {
     load("~/Dropbox/Data/Genetics/Infinium/121311_analysis/probe_obj_final.rda")
-    probey=as.data.frame(gprobes)
-    probey$islrelate="OpenSea"
-    probey$islrelate[probey$dist.island<4001]="Shelf"
-    probey$islrelate[probey$dist.island<2001]="Shore"
-    probey$islrelate[probey$dist.island==0]="Island"
-    dat$timp.anno$probe=data.frame(chr=probey$seqnames, off=probey$start, islrelate=probey$islrelate)
-    rownames(dat$timp.anno$probe)=probey$name
+    probey=gprobes
+    values(probey)=NULL
+    names(probey)=values(gprobes)$name
+    values(probey)$islrelate="OpenSea"
+    values(probey)$islrelate[values(gprobes)$dist.island<4001]="Shelf"
+    values(probey)$islrelate[values(gprobes)$dist.island<2001]="Shore"
+    values(probey)$islrelate[values(gprobes)$dist.island==0]="Island"
+    ##Remove filtered out probes
+    probey=probey[names(probey) %in% rownames(dat$Y)]
+    dat$timp.anno$probe=probey
     dat$timp.anno$sample=data.frame(id=dat$pd$Sample.ID, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
       status=dat$pd$Status, pheno=dat$pd$Phenotype, note=dat$pd$Notes)
-    rownames(dat$timp.anno$sample)=rownames(dat$pd)
-    
+    rownames(dat$timp.anno$sample)=rownames(dat$pd)   
   }
   return(dat)
 }
@@ -606,10 +604,10 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
     tab$pv = 1-Fn(abs(tab$area))    
   }
 
- 
-  ##Area is amount of difference*number of probes(clusters in this case)
-  tab=tab[tab$area>0.5,]
-  return(tab)
+  dmr=GRanges(seqnames=tab$chr, strand="*", range=IRanges(start=tab$start, end=tab$end))
+  values(dmr)=tab[,4:dim(tab)[2]]
+  
+  return(dmr)
 }
 
 
@@ -618,6 +616,8 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
 cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=1) {
   ##This function does mds of probes which show a difference, seperated by regional differences
   ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
+
+  require(ggplot2)
 
   dat=dat.init(dat)
   
@@ -674,8 +674,11 @@ dat.melt <- function(panno, sanno, raw) {
   require(reshape)
   ##This funciton melts data into a ggplot like format
   melted=melt(raw)
+  ##Label columns apporpriately of melted matrix
   names(melted)=c("pid", "sid", "value")
-  melted=cbind(melted, panno[match(melted$pid, rownames(panno)),])
+  ##Add probe annotation - because duplicates in rownames of gprobes->data.frame, row.names=NULL
+  melted=cbind(melted, as.data.frame(panno[match(melted$pid, names(panno))], row.names=NULL))
+  ##Add sample annotation
   melted=cbind(melted, sanno[match(melted$sid, rownames(sanno)),])
   return(melted)
 }
@@ -736,10 +739,51 @@ raw.get.tracks <- function(refdir="~/temp") {
 
 }
 
+range.plot <- function(dat, tab) {
+  ##Incoming tab is a GRanges
 
-region.plot <- function(dat, tab) {
+  require(GenomicRanges)
   require(ggplot2)
   
+  ##Make sure it's all initialized
+  dat=dat.init(dat)
+
+  ##Plot first 25 blocks
+  M=min(length(tab), 25)
+
+  ##Plot this far (in %) on either side
+  ADD=0.1
+  
+  for (i in 1:M) {
+    ##Set range over which we will plot
+    plot.range=resize(tab[i], width=width(tab[i])*1.1, fix="center")
+    pprobes=subsetByOverlaps(dat$timp.anno$probe, plot.range)
+        
+    ##log2 ratio, just these probes
+    yy=dat$Y[rownames(dat$Y) %in% names(pprobes),]
+    
+    melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
+    
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
+          +stat_smooth()+geom_jitter(alpha=0.5)
+          +theme_bw()+
+          opts(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range)))))
+    
+    ##probe.status=factor(dat$probe.class$anno$type)
+    ##probe.status=probe.status[dat$probe.class$pns[Index]]
+    
+    ##probe.col=probe.status
+    ##levels(probe.col)=c("blue", "red", "orange", "green")
+    
+    
+  }
+  
+}
+
+
+tab.region.plot <- function(dat, tab) {
+  require(ggplot2)
+
   ##Make sure it's all initialized
   dat=dat.init(dat)
   
@@ -749,7 +793,6 @@ region.plot <- function(dat, tab) {
   ADD=2000
 
   for (i in 1:M) {
-  
   
     ##Take probes within this defined region
     Index=which(dat$locs$chr==tab$chr[i] &
@@ -763,7 +806,7 @@ region.plot <- function(dat, tab) {
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
 
-    print(ggplot(melted, aes(x=off, y=value, colour=factor(status),fill=factor(status)))
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(status),fill=factor(status)))
           +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
           +theme_bw()+opts(title="Region"))
   
@@ -780,34 +823,64 @@ region.plot <- function(dat, tab) {
 }
 
 anno.region.plot <- function(dat, tab) {
+  ##Plot with annotaiton objects
   
   require(Gviz)
-  require(rtracklayer)
-  
+
   ##Make sure it's all initialized
   dat=dat.init(dat)
-  
-  ##Plot top 25 or all dmrs, whichever is less
-  M=min(nrow(tab),25)
-  ##Plot this far (in bp) on either side
-  ADD=2000
 
-  type=dat$pd$Phenotype
+  ##Add sample annotation
+  sampy=dat$timp.anno$sample[match(colnames(dat$Y), rownames(dat$timp.anno$sample)),]
+  
+  ##Plot first 25 blocks
+  M=min(length(tab),25)
+
+  ##Plot this far (in %) on either side
+  ADD=0.1
   
   for (i in 1:M) {
-  
-  
-    ##Take probes within this defined region
-    Index=which(dat$locs$chr==tab$chr[i] &
-      dat$locs$pos >= tab$start[i]-ADD &
-      dat$locs$pos <= tab$end[i]+ADD)
     
-    ##x is genomic position
-    x=dat$locs$pos[Index]
-    ##log2 ratio, just these probes
-    yy=dat$Y[Index,]
+    ##Set range over which we will plot
+    plot.range=resize(tab[i], width=width(tab[i])*(1+ADD), fix="center")
+    pprobes=subsetByOverlaps(dat$timp.anno$probe, plot.range)
 
-  
+    ##Remove strand info(unneeded complication in this case)
+    strand(pprobes)="*"
+    
+    plot.area=range(pprobes)
+    
+    ##log2 ratio, just these probes
+    yy=dat$Y[match(names(pprobes), rownames(dat$Y)),]
+
+    ##DO: Use size of dots to make small dots, maybe also alpha for dots
+    ##Data track
+    mtrack=DataTrack(pprobes, data=t(yy),
+      genome="hg19", name="Beta",groups=sampy$status, type="smooth")    
+
+    ptrack=AnnotationTrack(pprobes, genome="hg19", name="Probes",
+      feature=values(pprobes)$islrelate, collapse=T, mergeGroups=T, showId=F,
+      stacking="dense",Shore="green", Island="blue", OpenSea="red", Shelf="orange")
+    
+    isltrack=UcscTrack(track="CpG Islands",chromosome=as.character(seqnames(plot.area)),
+      from=start(plot.area), to=end(plot.area), genome="hg19",
+      start="chromStart", end="chromEnd", name="CpG Islands")
+      
+    genetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(seqnames(plot.area)), genome="hg19",
+      rstart="exonStarts", rends="exonEnds", gene="name", symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T,
+      from=start(plot.area), to=end(plot.area))
+    
+    itrack=IdeogramTrack(genome="hg19", chromosome=as.character(seqnames(tab[1])))
+    gtrack=GenomeAxisTrack()
+
+    ##Workaround for broken GViz
+    ##IF no exons in region
+    if (countOverlaps(plot.area, ranges(genetrack))==0) {
+      genetrack=GeneRegionTrack(name="Intron")
+    }
+    
+    plotTracks(list(itrack, gtrack, genetrack, mtrack, isltrack, ptrack),background.title="darkblue", from=start(plot.area), to=end(plot.area))
+             
   }
 
 }
@@ -821,6 +894,8 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
   require(limma)
   require(DNAcopy)
 
+  probes.min=2
+  
   dat=dat.init(dat)
 
   keep=as.matrix(dat$pd[ccomp])%in%grps
@@ -839,6 +914,10 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     islandName=dat$everything$UCSC_CpG_Islands_Name,
     blocks=dat$probe.class)
 
+  ##filter blocks of less than 2 probes(that's just ridic)
+  blocky=b$tab[values(b$tab)$num.mark>=probes.min]
+  
+  
   ##Permutation testing for block p-value
   if (permute.num>0) {
     cat("Performing", permute.num, "permutations\n")
@@ -876,8 +955,8 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     nulldist=split(v,l)
     
     ##Put the actual data into the same cutoffs
-    obsv <- elementMetadata(b$tab)$seg.mean
-    obsl <-cut(elementMetadata(b$tab)$num.mark,cutoffs,include.lower=TRUE)
+    obsv <- elementMetadata(blocky)$seg.mean
+    obsl <-cut(elementMetadata(blocky)$num.mark,cutoffs,include.lower=TRUE)
     
     ##Group the values in different length groups
     Indexes=split(seq(along=obsv),obsl)
@@ -890,11 +969,11 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
       pvals[tmpind]=sapply(abs(obsv[tmpind]),function(x) mean(x<null))
     }
     
-    elementMetadata(b$tab)$pvals=pvals
+    elementMetadata(blocky)$pvals=pvals
 
   }
 
-  return(b)
+  return(blocky)
 }
 
 
