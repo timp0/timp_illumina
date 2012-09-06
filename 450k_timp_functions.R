@@ -462,7 +462,7 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
 
 
 dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Dropbox/Temp",
-                        expdatapath="/thumper2/feinbergLab/core/arrays/illumina/") {
+                        expdatapath="/thumper2/feinbergLab/core/arrays/illumina/", QC=FALSE) {
   ##PAY ATTENTION TO filt.thresh(quality threshold) and sex - boyorgirl is not perfect, this has to be checked the first time and defaults
   ##Set properly
   
@@ -489,10 +489,13 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Drop
   ##data exploration shows meds should be above 10.5. THIS SHOULD NOT
   ##BE AUTOMATIC.. EXPLORATION NEEDED TO CHOSE 10.5
   ##Timp-thyroid choice is ~11
-  if (plotter) {
+  if (plotter|QC) {
     ##Use plots to look
-    pdf(file.path(plotdir, "badwolf.pdf"))
+    pdf(file.path(plotdir, "QC.pdf"))
     plot(Umeds,Mmeds)
+    densityPlot(RGset, sampGroups = groups, main = "Beta", xlab = "Beta")
+    densityBeanPlot(RGset, sampGroups = groups, sampNames = names)
+    controlStripPlot(RGset, sampNames = names)
     dev.off()
   }
   
