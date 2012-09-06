@@ -35,15 +35,16 @@ if (file.exists(file.path(filedir, "epi.rda"))) {
   ##save dat file
   save(list=c("dat"),file=file.path(filedir, "epi.rda"))
 }
-source("~/thumper/repos/timp_illumina/450k_timp_functions.R")
-dat=dat.init(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_analysis")
 
-sel=c("Old-exposed", "Young-exposed")
-dat$pd$Phenotype=dat$pd$Cat2
+
+
+dat=dat.init(dat)
+
+sel=c("normal", "cancer")
+
 block=block.finding(dat, grps=sel, permute.num=0)
-
-dmr1=dmr.find(dat, grps=sel)
-
+dmr=dmr.find(dat, grps=sel)
+vmr=vmr.find(dat, grps=sel)
 
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
 cg.cluster(dat, grps=sel)
@@ -51,14 +52,17 @@ dev.off()
 
 #Plot dmrs
 
-pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrggplot.pdf")), width=11, height=8.5)
-region.plot(dat, dmr)
+pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrggplotd.pdf")), width=11, height=8.5)
+range.plot(dat, dmr, grp="pheno")
+
 dev.off()
 write.csv(dmr1,file="/thumper2/feinbergLab/personal/aunterma/SkinAging/Winston/ExposedAgeDMRs.csv")
 #Plot blocks now
 pdf(file.path(plotdir, paste0(sel[1], sel[2], "blockggplot.pdf")), width=11, height=8.5)
-block.plot(dat, block)
+range.plot(dat, block)
 dev.off()
+
 #Figure out vmr, vblock
+
 #Do a bunch of different tests, ignore permute for now
 

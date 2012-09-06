@@ -1,6 +1,3 @@
-##Ok -this function is to be designed to easily give us stats of various Tissue types and or
-##Phenotypes as a subset of the data we have
-
 winsor.probes <- function(subdata, per=0.05,
                            winsor=F, quantile=F) {
   ##Lots of fast row operations
@@ -16,7 +13,6 @@ winsor.probes <- function(subdata, per=0.05,
     beta=subdata
   }
 
-  
   if (quantile) {
     ##Could use quantile - which is more discrete, doesn't assume normal, but
     ##pretty much *will* exclude a value
@@ -111,8 +107,6 @@ tis.pheno <- function(data.anno) {
   freqs=table(factor(data.anno$Tissue), factor(data.anno$Phenotype, levels=desired.pheno.order))
   return(freqs)
 }
-
-
 
 col.pheno <- function(pheno) {
   
@@ -214,7 +208,6 @@ mad.ftest <- function(grp1, grp2) {
   return(result)
 }
 
-
 incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   
   grp1.beta=beta.trim(grp1, trim=T)
@@ -241,7 +234,6 @@ incvar.ftest <- function(grp1, grp2, trim=F, winsor=F) {
   rownames(result)=NULL
   return(result)
 }
-
 
 CpG.plot <- function(samp.data, panel=F, loc=c(0,0,.5,.5), norm=F,
                      col.p=T) {
@@ -356,7 +348,6 @@ CpG.pheno.density <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
 }
 
 
-
 PCA.CpG <- function(samp.data, panel=F, loc=c(0,0,.5,.5)) {
   ##This function is designed to spit out a plot of the methylation for a given CpG
   ##plotting the different tissues/phenotypes separately
@@ -469,7 +460,8 @@ qnorm.subset <- function(dat, sex=T,plotdir=NA) {
   return(dat)
 }
 
-dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Dropbox/Temp",
+
+dat.preload <- function(plates,filt.thresh=11, QC=F, sex=T, plotdir="~/Dropbox/Temp",
                         expdatapath="/thumper2/feinbergLab/core/arrays/illumina/") {
   ##PAY ATTENTION TO filt.thresh(quality threshold) and sex - boyorgirl is not perfect, this has to be checked the first time and defaults
   ##Set properly
@@ -497,10 +489,13 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Drop
   ##data exploration shows meds should be above 10.5. THIS SHOULD NOT
   ##BE AUTOMATIC.. EXPLORATION NEEDED TO CHOSE 10.5
   ##Timp-thyroid choice is ~11
-  if (plotter) {
+  if (QC) {
     ##Use plots to look
-    pdf(file.path(plotdir, "badwolf.pdf"))
+    pdf(file.path(plotdir, "QC.pdf"))
     plot(Umeds,Mmeds)
+    densityPlot(RGset, sampGroups = groups, main = "Beta", xlab = "Beta")
+    densityBeanPlot(RGset, sampGroups = groups, sampNames = names)
+    controlStripPlot(RGset, sampNames = names)
     dev.off()
   }
   
@@ -515,7 +510,8 @@ dat.preload <- function(plates,filt.thresh=11, plotter=F, sex=T, plotdir="~/Drop
 }
 
 
-dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_analysis") {
+
+dat.init <- function(dat, codedir="~/Code/timp_illumina") {
   ##Make sure data variable is initialized properly
   require(limma)
   
@@ -528,9 +524,7 @@ dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_an
   }
 
   if (!("timp.anno" %in% names(dat))) {
-
-   ## load(file.path(refdir,"probe_obj_final.rda")) 
-   load("/thumper2/feinbergLab/personal/wtimp/Old_Data/Infinium/121311_analysis/probe_obj_final.rda") 
+    load(file.path(codedir, "timp_illumina_data", "probe_obj_final.rda"))
     probey=gprobes
     values(probey)=NULL
     names(probey)=values(gprobes)$name
@@ -538,7 +532,8 @@ dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_an
     values(probey)$islrelate[values(gprobes)$dist.island<4001]="Shelf"
     values(probey)$islrelate[values(gprobes)$dist.island<2001]="Shore"
     values(probey)$islrelate[values(gprobes)$dist.island==0]="Island"
-    
+    ##Remove filtered out probes
+    probey=probey[names(probey) %in% rownames(dat$Y)]
     dat$timp.anno$probe=probey
     dat$timp.anno$sample=data.frame(id=dat$pd$Label.1, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
       status=dat$pd$Status, pheno=dat$pd$Category, note=dat$pd$Cat2)
@@ -548,7 +543,7 @@ dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_an
 }
 
 dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5,
-                     permute.num=0,var=NULL) {
+	    		  		       permute.num=0, test="eb") {
   ##This function finds DMR, very similiar to how CHARM finds DMRs
   ##Uses an area cutoff for number of probes*difference - using log2 ratio
 
@@ -561,8 +556,9 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   type=factor((dat$pd[[ccomp]])[keep],grps)
   
   ##This is determined sex from data, not sex given from annotation
-  sex=factor(dat$pd$sex[keep],c("M","F")) 
-X=model.matrix(~type+sex)
+  sex=factor(dat$pd$sex[keep],c("M","F"))
+  X=model.matrix(~type+sex)
+
 
   ##Cluster the probes
   pns=clusterMaker(dat$locs$chr, dat$locs$pos, maxGap=MG)
@@ -580,14 +576,13 @@ X=model.matrix(~type+sex)
   
   ##Use t-statistic of difference for region finding in this case, could also have used
   ##fit coef[,2] which is the difference from the linear model fit)
-  ss=fit$coef[,2]
-  ebt=eb$t[,2]
-  if(var=="ss"){
+  if (test=="fit") {
     ss=fit$coef[,2]
-    tab=regionFinder(ss,pns,dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
   } else {
-  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
-}
+    ss=eb$t[,2]
+  }
+  
+  tab=regionFinder(ss, pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
   ##Need a cr here, regionFinder ... or it looks weird.
 
   cat("\n")
@@ -604,8 +599,14 @@ X=model.matrix(~type+sex)
       ##Fit linear model, get out differences per block
       n.fit=lmFit(y,sX)
       n.eb=ebayes(n.fit)
+      if (test=="fit") {
+        n.ss=n.fit$coef[,2]
+      } else {
+        n.ss=n.eb$t[,2]
+      }
+
       
-      n.tab=regionFinder(n.eb$t[,2], pns, dat$locs$chr, dat$locs$pos, cutoff=cutoff, ind=pnsind)
+      n.tab=regionFinder(n.ss, pns, dat$locs$chr, dat$locs$pos, cutoff=cutoff, ind=pnsind)
       
       ##Abs of area for distribution
       L[[j]]<-abs(n.tab$area)
@@ -619,10 +620,60 @@ X=model.matrix(~type+sex)
     tab$pv = 1-Fn(abs(tab$area))    
   }
 
- 
-  ##Area is amount of difference*number of probes(clusters in this case)
-  ##tab=tab[tab$area>0.5,]
-  return(tab)
+  dmr=GRanges(seqnames=tab$chr, strand="*", range=IRanges(start=tab$start, end=tab$end))
+  values(dmr)=tab[,4:dim(tab)[2]]
+  
+  return(dmr)
+}
+
+vmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5,
+                     permute.num=0) {
+  ##This function finds VMR, very similiar to dmr.find
+
+  require(matrixStats)
+  
+  dat=dat.init(dat)
+   
+  ##Select samples that are relevant for VMR finding
+  keep=as.matrix(dat$pd[ccomp])%in%grps
+  y=dat$Y[,keep]
+
+  type=factor((dat$pd[[ccomp]])[keep],grps)
+  
+  ##This is chosen sex, may be annotation, may be from data, depends on dat.preload
+  sex=factor(dat$pd$sex[keep],c("M","F"))
+  X=model.matrix(~type+sex)
+
+
+  ##Fit linear model, get out differences per block
+  fit=lmFit(y,X)
+  ##Get residuals from model - aka distance from fitted value
+  vM=abs(residuals(fit, y))
+  ##Fit using the resiudals instead
+  vfit=lmFit(vM, X)
+  
+  ##Cluster the probes
+  pns=clusterMaker(dat$locs$chr, dat$locs$pos, maxGap=MG)
+  ##Number of probes per cluster
+  Ns=tapply(seq(along=pns), pns, length)
+  ##Find good probe clusters(more than Min number of probes
+  pnsind=which(pns%in%as.numeric(names(which((Ns>MNP)))))
+
+  ##Get the differential methylation (beta) for summary
+  dm=rowSds(ilogit(y[,type==grps[1]]))-rowMeans(ilogit(y[,type==grps[2]]))   
+  eb=ebayes(vfit)
+  
+  ##Use default
+  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, ind=pnsind, cutoff=quantile(abs(eb$t[,2]),.95))
+  ##Need a cr here, regionFinder ... or it looks weird.
+  cat("\n")
+  ##Filter out vdmr that are only one probe
+  tab=tab[tab$L>2,]
+   
+  vmr=GRanges(seqnames=tab$chr, strand="*", range=IRanges(start=tab$start, end=tab$end))
+  values(vmr)=tab[,4:dim(tab)[2]]
+  
+  return(vmr)
 }
 
 
@@ -754,16 +805,17 @@ raw.get.tracks <- function(refdir="~/temp") {
   z=AnnotationTrack(q, chromosome="chr6", genome="hg19",  name="RefSeq Genes", showId=T, id="symbol", grouping="gene")
 
 }
+range.plot <- function(dat, tab, grp="status") {
+  ##Incoming tab is a GRanges
 
-block.plot <- function(dat, tab, grp=status) {
-  ##Plot blocks
-  ##Incoming tab is z$tab
-
+  require(GenomicRanges)
+  require(ggplot2)
+  
   ##Make sure it's all initialized
   dat=dat.init(dat)
 
   ##Plot first 25 blocks
-  M=25
+  M=min(length(tab), 25)
 
   ##Plot this far (in %) on either side
   ADD=0.1
@@ -778,9 +830,10 @@ block.plot <- function(dat, tab, grp=status) {
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
     
-    print(ggplot(melted, aes(x=start, y=value, colour=factor(grp),fill=factor(grp)))
+    print(ggplot(melted, aes_string(x="start", y="value", colour=grp,fill=grp))
           +stat_smooth()+geom_jitter(alpha=0.5)
-          +theme_bw()+opts(title=paste0("Region:", i)))
+          +theme_bw()+
+          opts(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range)))))
     
     ##probe.status=factor(dat$probe.class$anno$type)
     ##probe.status=probe.status[dat$probe.class$pns[Index]]
@@ -794,8 +847,7 @@ block.plot <- function(dat, tab, grp=status) {
 }
 
 
-
-region.plot <- function(dat, tab, var="status") {
+tab.region.plot <- function(dat, tab) {
   require(ggplot2)
 
   ##Make sure it's all initialized
@@ -835,35 +887,65 @@ region.plot <- function(dat, tab, var="status") {
 
 }
 
-anno.region.plot <- function(dat, tab) {
+anno.region.plot <- function(dat, tab, grp="status") {
+  ##Plot with annotaiton objects
   
   require(Gviz)
-  require(rtracklayer)
-  
+
   ##Make sure it's all initialized
   dat=dat.init(dat)
-  
-  ##Plot top 25 or all dmrs, whichever is less
-  M=min(nrow(tab),25)
-  ##Plot this far (in bp) on either side
-  ADD=2000
 
-  type=dat$pd$Phenotype
+  ##Add sample annotation
+  sampy=dat$timp.anno$sample[match(colnames(dat$Y), rownames(dat$timp.anno$sample)),]
+  
+  ##Plot first 5 blocks
+  M=min(length(tab),5)
+
+  ##Plot this far (in %) on either side
+  ADD=0.1
   
   for (i in 1:M) {
-  
-  
-    ##Take probes within this defined region
-    Index=which(dat$locs$chr==tab$chr[i] &
-      dat$locs$pos >= tab$start[i]-ADD &
-      dat$locs$pos <= tab$end[i]+ADD)
     
-    ##x is genomic position
-    x=dat$locs$pos[Index]
-    ##log2 ratio, just these probes
-    yy=dat$Y[Index,]
+    ##Set range over which we will plot
+    plot.range=resize(tab[i], width=width(tab[i])*(1+ADD), fix="center")
+    pprobes=subsetByOverlaps(dat$timp.anno$probe, plot.range)
 
-  
+    ##Remove strand info(unneeded complication in this case)
+    strand(pprobes)="*"
+    
+    plot.area=range(pprobes)
+    
+    ##log2 ratio, just these probes
+    yy=dat$Y[match(names(pprobes), rownames(dat$Y)),]
+
+    ##DO: Use size of dots to make small dots, maybe also alpha for dots
+    ##Data track
+    mtrack=DataTrack(pprobes, data=t(yy),
+      genome="hg19", name="Beta",groups=sampy[[grp]], type="smooth")    
+
+    ptrack=AnnotationTrack(pprobes, genome="hg19", name="Probes",
+      feature=values(pprobes)$islrelate, collapse=T, mergeGroups=T, showId=F,
+      stacking="dense",Shore="green", Island="blue", OpenSea="red", Shelf="orange")
+    
+    isltrack=UcscTrack(track="CpG Islands",chromosome=as.character(seqnames(plot.area)),
+      from=start(plot.area), to=end(plot.area), genome="hg19",
+      start="chromStart", end="chromEnd", name="CpG Islands")
+      
+    genetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(seqnames(plot.area)), genome="hg19",
+      rstart="exonStarts", rends="exonEnds", gene="name", symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T,
+      from=start(plot.area), to=end(plot.area))
+    
+    itrack=IdeogramTrack(genome="hg19", chromosome=as.character(seqnames(tab[1])))
+    gtrack=GenomeAxisTrack()
+
+    ##Workaround for broken GViz
+    ##IF no exons in region
+    if (countOverlaps(plot.area, ranges(genetrack))==0) {
+      genetrack=GeneRegionTrack(name="Intron")
+    }
+    
+    plotTracks(list(itrack, gtrack, genetrack, mtrack, isltrack, ptrack),background.title="darkblue", from=start(plot.area), to=end(plot.area))
+             
   }
 
 }
