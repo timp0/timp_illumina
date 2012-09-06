@@ -548,7 +548,7 @@ dat.init <- function(dat,refdir="~wtimp/Dropbox/Data/Genetics/Infinium/121311_an
 }
 
 dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5,
-                     permute.num=0) {
+                     permute.num=0,var=NULL) {
   ##This function finds DMR, very similiar to how CHARM finds DMRs
   ##Uses an area cutoff for number of probes*difference - using log2 ratio
 
@@ -562,7 +562,7 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   
   ##This is determined sex from data, not sex given from annotation
   sex=factor(dat$pd$sex[keep],c("M","F")) 
-  X=model.matrix(~type+sex)
+X=model.matrix(~type+sex)
 
   ##Cluster the probes
   pns=clusterMaker(dat$locs$chr, dat$locs$pos, maxGap=MG)
@@ -580,9 +580,14 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   
   ##Use t-statistic of difference for region finding in this case, could also have used
   ##fit coef[,2] which is the difference from the linear model fit)
-  ##ss=fit$coef[,2]
- ##tab=regionFinder(ss,pns,dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+  ss=fit$coef[,2]
+  ebt=eb$t[,2]
+  if(var=="ss"){
+    ss=fit$coef[,2]
+    tab=regionFinder(ss,pns,dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+  } else {
   tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+}
   ##Need a cr here, regionFinder ... or it looks weird.
 
   cat("\n")
@@ -626,6 +631,7 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
 cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=1) {
   ##This function does mds of probes which show a difference, seperated by regional differences
   ##Y is logit of data log2(dat$meth/dat$unmeth) - should I put this in the function directly(doesn't waste *that* much time)  
+
 
   require(ggplot2)
 
@@ -749,7 +755,7 @@ raw.get.tracks <- function(refdir="~/temp") {
 
 }
 
-block.plot <- function(dat, tab) {
+block.plot <- function(dat, tab, grp=status) {
   ##Plot blocks
   ##Incoming tab is z$tab
 
@@ -772,7 +778,7 @@ block.plot <- function(dat, tab) {
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
     
-    print(ggplot(melted, aes(x=start, y=value, colour=factor(note),fill=factor(note)))
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(grp),fill=factor(grp)))
           +stat_smooth()+geom_jitter(alpha=0.5)
           +theme_bw()+opts(title=paste0("Region:", i)))
     
@@ -789,7 +795,7 @@ block.plot <- function(dat, tab) {
 
 
 
-region.plot <- function(dat, tab) {
+region.plot <- function(dat, tab, var="status") {
   require(ggplot2)
 
   ##Make sure it's all initialized
@@ -813,7 +819,7 @@ region.plot <- function(dat, tab) {
 
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
-    print(ggplot(melted, aes(x=start, y=value, colour=factor(note),fill=factor(note)))
+    print(ggplot(melted, aes(x=start, y=value, colour=factor(var),fill=factor(var)))
           +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
           +theme_bw()+opts(title="Region"))
   
@@ -875,7 +881,7 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
   
   dat=dat.init(dat)
 
-  keep=as.matrix(dat$pd[ccomp])%in%grpso
+  keep=as.matrix(dat$pd[ccomp])%in%grps
   type=factor((dat$pd[[ccomp]])[keep],grps)
   
   ##This is determined sex from data, not sex given from annotation
