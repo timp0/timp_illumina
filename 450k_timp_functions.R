@@ -542,7 +542,7 @@ dat.init <- function(dat) {
 }
 
 dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500, MNP=3, cutoff=0.5,
-                     permute.num=0) {
+	    		  		       permute.num=0, test="eb") {
   ##This function finds DMR, very similiar to how CHARM finds DMRs
   ##Uses an area cutoff for number of probes*difference - using log2 ratio
 
@@ -574,9 +574,13 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
   
   ##Use t-statistic of difference for region finding in this case, could also have used
   ##fit coef[,2] which is the difference from the linear model fit)
-  ##ss=fit$coef[,2]
+  if (test=="fit") {
+    ss=fit$coef[,2]
+  } else {
+    ss=eb$t[,2]
+  }
   
-  tab=regionFinder(eb$t[,2], pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
+  tab=regionFinder(ss, pns, dat$locs$chr, dat$locs$pos, y=dm, cutoff=cutoff, ind=pnsind)
   ##Need a cr here, regionFinder ... or it looks weird.
   cat("\n")
   ##Also - rownames of tab are awfully useless - figure out what the right piece of info is, I think it's probably pns
@@ -592,8 +596,14 @@ dmr.find <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), MG=500,
       ##Fit linear model, get out differences per block
       n.fit=lmFit(y,sX)
       n.eb=ebayes(n.fit)
+      if (test=="fit") {
+        n.ss=n.fit$coef[,2]
+      } else {
+        n.ss=n.eb$t[,2]
+      }
+
       
-      n.tab=regionFinder(n.eb$t[,2], pns, dat$locs$chr, dat$locs$pos, cutoff=cutoff, ind=pnsind)
+      n.tab=regionFinder(n.ss, pns, dat$locs$chr, dat$locs$pos, cutoff=cutoff, ind=pnsind)
       
       ##Abs of area for distribution
       L[[j]]<-abs(n.tab$area)
