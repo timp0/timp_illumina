@@ -1,6 +1,6 @@
 ##This regionFinder function is identical to normal except that the methylation differences given by y (default in 450k - dm, as y=dm in regionFinder) are cubed before being added together. This gives more weight to probes with larger average methylation differences. This gives less weight to DMRs that are lots of probes with little methylation differences.
 
-regionFinder<-function(x,regionNames,chr,position,y=x,
+MichaelregionFinder<-function(x,regionNames,chr,position,y=x,
                        summary=mean,ind=seq(along=x),order=TRUE,oneTable=TRUE,
                        ...){
   
