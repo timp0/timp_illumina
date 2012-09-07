@@ -535,8 +535,7 @@ dat.init <- function(dat, codedir="~/Code/timp_illumina") {
     ##Remove filtered out probes
     probey=probey[names(probey) %in% rownames(dat$Y)]
     dat$timp.anno$probe=probey
-    dat$timp.anno$sample=data.frame(id=dat$pd$Label.1, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,
-      status=dat$pd$Status, pheno=dat$pd$Category, note=dat$pd$Cat2)
+    dat$timp.anno$sample=data.frame(id=dat$pd$Sample.ID, sex=dat$pd$Sex, age=dat$pd$Age, tissue=dat$pd$Tissue,status=dat$pd$Status, pheno=dat$pd$Phenotype, note=dat$pd$Notes)
     rownames(dat$timp.anno$sample)=rownames(dat$pd)   
   }
   return(dat)
