@@ -52,6 +52,7 @@ dev.off()
 ##Plot blocks now
 pdf(file.path(plotdir, paste0(sel[1], sel[2], "blockggplot.pdf")), width=11, height=8.5)
 range.plot(dat, block)
+
 dev.off()
 
 ##Gviz plots!
@@ -60,9 +61,6 @@ anno.region.plot(dat, dmr)
 dev.off()
 
 ##Make plots more flexible(colored lines for different sample types, colored ribbon for iqr range instead of loess 95%?  
-
-
-#Figure out vmr, vblock
 
 #Do a bunch of different tests, ignore permute for now
 

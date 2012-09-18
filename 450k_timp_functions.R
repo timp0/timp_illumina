@@ -804,10 +804,12 @@ raw.get.tracks <- function(refdir="~/temp") {
   z=AnnotationTrack(q, chromosome="chr6", genome="hg19",  name="RefSeq Genes", showId=T, id="symbol", grouping="gene")
 
 }
-range.plot <- function(dat, tab, grp="status") {
+
+range.plot <- function(dat, tab, grp="status", logit=T) {
   ##Incoming tab is a GRanges
 
   require(GenomicRanges)
+  require(RColorBrewer)
   require(ggplot2)
   
   ##Make sure it's all initialized
@@ -818,28 +820,48 @@ range.plot <- function(dat, tab, grp="status") {
 
   ##Plot this far (in %) on either side
   ADD=0.1
+
+  ##Reference for probe coloring
+  probe.type=data.frame(lab=c("Island", "Shore", "Shelf", "OpenSea"), color=c("green", "blue", "orange", "red"),stringsAsFactors=F)                           
+
+  ##Reference for sample coloring
+  sample.type=data.frame(lab=as.character(unique(dat$timp.anno$sample[[grp]])), stringsAsFactors=F)
+  sample.type$color=brewer.pal(9, "Set1")[seq(along=sample.type$lab)]
+
+  coly=c(probe.type$color, sample.type$color)
+  names(coly)=c(probe.type$lab, sample.type$lab)
   
   for (i in 1:M) {
     ##Set range over which we will plot
     plot.range=resize(tab[i], width=width(tab[i])*1.1, fix="center")
     pprobes=subsetByOverlaps(dat$timp.anno$probe, plot.range)
-        
+
     ##log2 ratio, just these probes
     yy=dat$Y[rownames(dat$Y) %in% names(pprobes),]
+
+    if (!logit) {
+      yy=ilogit(yy)
+    }
     
     melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
     
-    print(ggplot(melted, aes_string(x="start", y="value", colour=grp,fill=grp))
-          +stat_smooth()+geom_jitter(alpha=0.5)
-          +theme_bw()+
-          opts(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range)))))
-    
-    ##probe.status=factor(dat$probe.class$anno$type)
-    ##probe.status=probe.status[dat$probe.class$pns[Index]]
-    
-    ##probe.col=probe.status
-    ##levels(probe.col)=c("blue", "red", "orange", "green")
-    
+    to.plot=ggplot(melted, aes_string(x="start", y="value", colour=grp, fill=grp))+theme_bw()+
+      labs(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range))))
+
+    ##If too many points, just plot lines(saves ugly block pictures)
+    if (length(pprobes)>50) {
+      to.plot=to.plot+stat_smooth()
+    } else {
+      to.plot=to.plot+stat_smooth()+geom_jitter(alpha=0.5)      
+    }
+
+    ##Add rug of probes
+    to.plot=to.plot+geom_rug(aes(y=NULL, color=islrelate))
+
+    to.plot=to.plot+scale_fill_manual(values=coly, guide=F)+scale_color_manual(values=coly)
+
+    print(to.plot)
+       
     
   }
   
