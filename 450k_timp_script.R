@@ -30,7 +30,6 @@ if (file.exists(file.path(filedir, "thy.rda"))) {
 }
 
 
-
 dat=dat.init(dat)
 
 sel=c("normal", "cancer")
@@ -50,9 +49,8 @@ range.plot(dat, dmr, grp="pheno")
 dev.off()
 
 ##Plot blocks now
-pdf(file.path(plotdir, paste0(sel[1], sel[2], "blockggplot.pdf")), width=11, height=8.5)
-range.plot(dat, block)
-
+pdf(file.path(plotdir, paste0(sel[1], sel[2], "blockggplot2.pdf")), width=11, height=8.5)
+range.plot(dat, block, grp="pheno")
 dev.off()
 
 ##Gviz plots!

@@ -850,9 +850,9 @@ range.plot <- function(dat, tab, grp="status", logit=T) {
 
     ##If too many points, just plot lines(saves ugly block pictures)
     if (length(pprobes)>50) {
-      to.plot=to.plot+stat_smooth()
+      to.plot=to.plot+stat_smooth(alpha=.1)
     } else {
-      to.plot=to.plot+stat_smooth()+geom_jitter(alpha=0.5)      
+      to.plot=to.plot+stat_smooth(alpha=.1)+geom_jitter(alpha=0.5)      
     }
 
     ##Add rug of probes
