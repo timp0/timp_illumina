@@ -34,9 +34,11 @@ dat=dat.init(dat)
 
 sel=c("normal", "cancer")
 
-block=block.finding(dat, grps=sel, permute.num=0)
+block=block.finding(dat, grps=sel, permute.num=100)
 dmr=dmr.find(dat, grps=sel)
 vmr=vmr.find(dat, grps=sel)
+
+save(list=c("block", "dmr", "vmr"), file=file.path(filedir, "reg.rda"), compress="gzip")
 
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
 cg.cluster(dat, grps=sel)

@@ -971,7 +971,7 @@ anno.region.plot <- function(dat, tab, grp="status") {
 
 }
 
-block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), permute.num=100) {
+block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), permute.num=100, cores=1) {
   ##This function wraps Rafa's block finding code
   ##Give the field that you want to use for classifying in Phenotype
   ##Give the groups in grps
@@ -979,6 +979,10 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
   
   require(limma)
   require(DNAcopy)
+  require(doMC)
+  registerDoMC()
+  options(cores=cores)
+
 
   probes.min=2
   
@@ -1000,18 +1004,17 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     islandName=dat$everything$UCSC_CpG_Islands_Name,
     blocks=dat$probe.class)
 
+  
   ##filter blocks of less than 2 probes(that's just ridic)
   blocky=b$tab[values(b$tab)$num.mark>=probes.min]
-  
+
   
   ##Permutation testing for block p-value
   if (permute.num>0) {
     cat("Performing", permute.num, "permutations\n")
     
-    L <- vector("list",permute.num)
-    V <- vector("list",permute.num)
-    for(j in 1:permute.num){
-
+    permu = foreach(j=1:permute.num, .combine=rbind) %dopar% {
+      perm=data.frame()
       cat(j,"")
       sX=model.matrix(~sample(type)+sex)
       nb=blockFinder(dat$Y[,keep],design=sX,dat$locs$chr,dat$locs$pos,
@@ -1019,26 +1022,18 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
         dat$everything$UCSC_CpG_Islands_Name,
         blocks=dat$probe.class)
       
-      ##Number of probes contained
-      L[[j]]<-elementMetadata(nb$tab)$num.mark
-      ##Average difference of probes within block
-      V[[j]]<-elementMetadata(nb$tab)$seg.mean
-      cat(length(L[[j]]),"\n")
+      cbind(elementMetadata(nb$tab)$num.mark, elementMetadata(nb$tab)$seg.mean)
     }
-     
-    l=unlist(L)
     
     ##Set cutoffs to various quantiles, defined by the number of blocks
     ##over 1e4
-    cutoffs <- c(0,unique(quantile(l,seq(0,1,len=round(length(l)/10000)))))
+    cutoffs <- c(0,unique(quantile(permu[,1],seq(0,1,len=round(length(permu[,1])/10000)))))
     ##Top cutoff is Infinity
     cutoffs[length(cutoffs)]<-Inf
     ##Bin things as a factor
-    l=cut(l,cutoffs,include.lower=TRUE)
-    ##
-    v=unlist(V)
+    l=cut(permu[,1],cutoffs,include.lower=TRUE)
     ##Split it up according to length bins
-    nulldist=split(v,l)
+    nulldist=split(permu[,2],l)
     
     ##Put the actual data into the same cutoffs
     obsv <- elementMetadata(blocky)$seg.mean
@@ -1049,15 +1044,20 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     pvals=vector("numeric",length(obsv))
     
     ##Calculate p-values for each bin
-    for(j in seq(along=Indexes)){
+    for(j in seq(along=Indexes)) {
       tmpind=Indexes[[j]]
-      null<-abs(nulldist[[names(Indexes)[j]]])
-      pvals[tmpind]=sapply(abs(obsv[tmpind]),function(x) mean(x<null))
+      ##Needed in case real blocks don't have any in bin to prevent list result
+      if (length(tmpind)>0) {
+        null<-abs(nulldist[[names(Indexes)[j]]])      
+        pvals[tmpind]=sapply(abs(obsv[tmpind]),function(x) mean(x<null))
+      }
     }
     
     elementMetadata(blocky)$pvals=pvals
 
+    blocky=blocky[order(values(blocky)$pvals)]
   }
+  
 
   return(blocky)
 }
