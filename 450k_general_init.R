@@ -8,7 +8,7 @@ source(file.path(codedir, "Rafa_functions.R"))
 
 
 ##Experimental file location
-expdatapath="/thumper2/feinbergLab/core/arrays/illumina/"
+expdatapath="/thumper2/feinbergLab/core/arrays/illumina"
 
 ##Current 450k package name
 ##Kasper says ignore warnings about "contains no R code"

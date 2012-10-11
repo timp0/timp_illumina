@@ -805,7 +805,7 @@ raw.get.tracks <- function(refdir="~/temp") {
 
 }
 
-range.plot <- function(dat, tab, grp="status", logit=T) {
+range.plot <- function(dat, tab, grp="status", logit=T, num.plot=25) {
   ##Incoming tab is a GRanges
 
   require(GenomicRanges)
@@ -816,7 +816,7 @@ range.plot <- function(dat, tab, grp="status", logit=T) {
   dat=dat.init(dat)
 
   ##Plot first 25 blocks
-  M=min(length(tab), 25)
+  M=min(length(tab), num.plot)
 
   ##Plot this far (in %) on either side
   ADD=0.1
@@ -867,48 +867,7 @@ range.plot <- function(dat, tab, grp="status", logit=T) {
   
 }
 
-
-tab.region.plot <- function(dat, tab) {
-  require(ggplot2)
-
-  ##Make sure it's all initialized
-  dat=dat.init(dat)
-  
-  ##Plot top 25 or all dmrs, whichever is less
-  M=min(nrow(tab),25)
-  ##Plot this far (in bp) on either side
-  ADD=2000
-
-  for (i in 1:M) {
-  
-    ##Take probes within this defined region
-    Index=which(dat$locs$chr==tab$chr[i] &
-      dat$locs$pos >= tab$start[i]-ADD &
-      dat$locs$pos <= tab$end[i]+ADD)
-    
-    ##log2 ratio, just these probes
-    yy=dat$Y[Index,]
-
-
-    
-    melted=dat.melt(dat$timp.anno$probe, dat$timp.anno$sample, yy)
-    print(ggplot(melted, aes(x=start, y=value, colour=factor(var),fill=factor(var)))
-          +stat_smooth(method="loess")+geom_jitter(alpha=0.5)
-          +theme_bw()+opts(title="Region"))
-  
-          
-    ##probe.status=factor(dat$probe.class$anno$type)
-    ##probe.status=probe.status[dat$probe.class$pns[Index]]
-
-    ##probe.col=probe.status
-    ##levels(probe.col)=c("blue", "red", "orange", "green")
-
-    
-  }
-
-}
-
-anno.region.plot <- function(dat, tab, grp="status") {
+anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25) {
   ##Plot with annotaiton objects
   
   require(Gviz)
@@ -919,12 +878,15 @@ anno.region.plot <- function(dat, tab, grp="status") {
   ##Add sample annotation
   sampy=dat$timp.anno$sample[match(colnames(dat$Y), rownames(dat$timp.anno$sample)),]
   
-  ##Plot first 5 blocks
-  M=min(length(tab),5)
+  ##Plot first 25 blocks
+  M=min(length(tab),num.plot)
 
   ##Plot this far (in %) on either side
   ADD=0.1
-  
+
+  load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
+  values(refseq.exons)$exon=paste(values(refseq.exons)$refseq.name, values(refseq.exons)$exon.number, sep=".")
+
   for (i in 1:M) {
     
     ##Set range over which we will plot
@@ -938,34 +900,52 @@ anno.region.plot <- function(dat, tab, grp="status") {
     
     ##log2 ratio, just these probes
     yy=dat$Y[match(names(pprobes), rownames(dat$Y)),]
+    
+    if (!logit) {
+      yy=ilogit(yy)
+    }
 
+    chromy=as.character(seqnames(plot.area))
+    
     ##DO: Use size of dots to make small dots, maybe also alpha for dots
-    ##Data track
+    ##Data track        
     mtrack=DataTrack(pprobes, data=t(yy),
-      genome="hg19", name="Beta",groups=sampy[[grp]], type="smooth")    
+      genome="hg19", name="Beta",groups=sampy[[grp]], type="smooth", legend=T)    
 
+    ##Region track
+    rtrack=AnnotationTrack(subsetByOverlaps(tab, plot.area),
+      collapse=T, showId=F, stacking="dense", name="Regions", genome="hg19")
+
+    ##Probe track
     ptrack=AnnotationTrack(pprobes, genome="hg19", name="Probes",
       feature=values(pprobes)$islrelate, collapse=T, mergeGroups=T, showId=F,
       stacking="dense",Shore="green", Island="blue", OpenSea="red", Shelf="orange")
-    
-    isltrack=UcscTrack(track="CpG Islands",chromosome=as.character(seqnames(plot.area)),
-      from=start(plot.area), to=end(plot.area), genome="hg19",
-      start="chromStart", end="chromEnd", name="CpG Islands")
-      
-    genetrack=UcscTrack(track="RefSeq Genes", table="refGene", trackType="GeneRegionTrack", chromosome=as.character(seqnames(plot.area)), genome="hg19",
-      rstart="exonStarts", rends="exonEnds", gene="name", symbol="name2", transcript="name", strand="strand", name="RefSeq Genes", feature="name2", showId=T,
-      from=start(plot.area), to=end(plot.area))
-    
-    itrack=IdeogramTrack(genome="hg19", chromosome=as.character(seqnames(tab[1])))
-    gtrack=GenomeAxisTrack()
 
-    ##Workaround for broken GViz
-    ##IF no exons in region
-    if (countOverlaps(plot.area, ranges(genetrack))==0) {
-      genetrack=GeneRegionTrack(name="Intron")
+    ##CpG island track
+    isltrack=AnnotationTrack(subsetByOverlaps(ucsc.isl, plot.area),
+      collapse=T, showId=F, stacking="dense", name="CpG Islands", genome="hg19")
+
+    genes.overlapped=values(subsetByOverlaps(refseq.genes, plot.area))$refseq.name
+
+    if (length(genes.overlapped)>0) {
+      exons.overlapped=refseq.exons[(values(refseq.exons)$refseq.name %in% genes.overlapped)&(seqnames(refseq.exons)==chromy)]
+      
+      exon.frame=data.frame(start=start(exons.overlapped), end=end(exons.overlapped), symbol=values(exons.overlapped)$gene.name,
+        exon=values(exons.overlapped)$exon, strand=as.character(strand(exons.overlapped)),
+        feature="cds", transcript=values(exons.overlapped)$refseq.name, gene=values(exons.overlapped)$refseq.name,
+        stringsAsFactors=F)
+      
+      genetrack=GeneRegionTrack(exon.frame, chromosome=chromy, genome="hg19",name="RefSeq Genes", showId=T, stacking="pack")
+    } else {
+      ##Empty track
+      genetrack=AnnotationTrack()
     }
     
-    plotTracks(list(itrack, gtrack, genetrack, mtrack, isltrack, ptrack),background.title="darkblue", from=start(plot.area), to=end(plot.area))
+    itrack=IdeogramTrack(genome="hg19", chromosome=chromy)
+    gtrack=GenomeAxisTrack()
+
+    
+    plotTracks(list(itrack, gtrack, genetrack, mtrack, rtrack, isltrack, ptrack) ,background.title="darkblue", from=start(plot.area), to=end(plot.area))
              
   }
 
@@ -1014,7 +994,6 @@ block.finding <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), pe
     cat("Performing", permute.num, "permutations\n")
     
     permu = foreach(j=1:permute.num, .combine=rbind) %dopar% {
-      perm=data.frame()
       cat(j,"")
       sX=model.matrix(~sample(type)+sex)
       nb=blockFinder(dat$Y[,keep],design=sX,dat$locs$chr,dat$locs$pos,

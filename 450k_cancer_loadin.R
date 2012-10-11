@@ -1,17 +1,13 @@
 if (!exists("codedir")) {
   codedir=getwd()
 }
-codedir="/thumper2/feinbergLab/personal/aunterma/repos/timp_illumina"
-source(file.path("/thumper2/feinbergLab/personal/aunterma/repos/timp_illumina/450k_general_init.R"))
+source(file.path(codedir,"450k_general_init.R"))
 
-##Read in plates-- Amy's plates
-plates=read.450k.sheet("/thumper2/feinbergLab/personal/aunterma/IL058", pattern = "_v2.csv$", recursive = TRUE)
-##Read in data
-##RGset=read.450k.exp(base=expdatapath, targets=plates)
+##Read in plate filenames
+plates=read.450k.sheet(expdatapath, "IL00[25789]_v2.csv$", recursive=T)
+plates=rbind(plates, read.450k.sheet(expdatapath, "IL010_v2.csv$", recursive=T))
+plates=rbind(plates, read.450k.sheet(expdatapath, "IL04[56].csv$", recursive=T))
 
-##Add something indexing gprobes vs actual data order
-##values(gprobes)$minfi.idx=match(values(gprobes)$name,
-##                 rownames(getM(RGset[,1])))
 
 
   

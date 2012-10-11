@@ -32,13 +32,42 @@ if (file.exists(file.path(filedir, "thy.rda"))) {
 
 dat=dat.init(dat)
 
+
+if (file.exists(file.path(filedir, "reg.rda"))) {
+  load(file.path(filedir, "reg.rda"))
+} else {
+
+  block.hyper=block.finding(dat, grps=c("normal", "hyperplastic"), permute.num=100, cores=4)
+  block.cancer=block.finding(dat, grps=c("normal", "cancer"), permute.num=100, cores=4)
+  
+
+  dmr=dmr.find(dat, grps=c("normal", "cancer"))
+  vmr=vmr.find(dat, grps=c("normal", "cancer"))
+  
+  save(list=c("block.hyper", "block.cancer","dmr", "vmr"), file=file.path(filedir, "reg.rda"), compress="gzip")
+
+}
+
+##Plot blocks now
+pdf(file.path(plotdir, "hyperblock.pdf"), width=11, height=8.5)
+range.plot(dat, block.hyper, grp="pheno", logit=F)
+dev.off()
+
+pdf(file.path(plotdir, "hyperblockgviz.pdf"), width=11, height=8.5)
+anno.region.plot(dat, block.hyper, grp="pheno", logit=F)
+dev.off()
+
+pdf(file.path(plotdir, "cancerblock.pdf"), width=11, height=8.5)
+range.plot(dat, block.cancer, grp="pheno", logit=F)
+dev.off()
+
+pdf(file.path(plotdir, "cancerblockgviz.pdf"), width=11, height=8.5)
+anno.region.plot(dat, block.cancer, grp="pheno", logit=F)
+dev.off()
+
+
+
 sel=c("normal", "cancer")
-
-block=block.finding(dat, grps=sel, permute.num=100)
-dmr=dmr.find(dat, grps=sel)
-vmr=vmr.find(dat, grps=sel)
-
-save(list=c("block", "dmr", "vmr"), file=file.path(filedir, "reg.rda"), compress="gzip")
 
 pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
 cg.cluster(dat, grps=sel)
@@ -50,10 +79,7 @@ pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrggplotd.pdf")), width=11, heig
 range.plot(dat, dmr, grp="pheno")
 dev.off()
 
-##Plot blocks now
-pdf(file.path(plotdir, paste0(sel[1], sel[2], "blockggplot2.pdf")), width=11, height=8.5)
-range.plot(dat, block, grp="pheno")
-dev.off()
+   
 
 ##Gviz plots!
 pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrgviz.pdf")), width=11, height=8.5)
