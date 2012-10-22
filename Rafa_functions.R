@@ -216,7 +216,7 @@ getSegments <- function(x,factor,cutoff=quantile(abs(x),0.99),verbose=TRUE){
   return(res)
 }
 
-blockFinder <- function(mat,design,chr,pos,relationToIsland,islandName,
+old.blockFinder <- function(mat,design,chr,pos,relationToIsland,islandName,
                         coef=2,blocks=NULL,
                         maxGap=400,
                         blockMaxGap=10^5,

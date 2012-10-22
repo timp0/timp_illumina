@@ -90,3 +90,37 @@ dev.off()
 
 #Do a bunch of different tests, ignore permute for now
 
+#####NEW RAFA EMAIL INFO
+
+library(minfiLocal)
+
+require(doMC)
+registerDoMC()
+cores=4
+options(cores=cores)
+
+
+##Gets only plate files and loads in basic stuff
+source(file.path(codedir,"450k_cancer_loadin.R"))
+
+##plates=plates[plates$Tissue %in% "thyroid",]
+##plates=plates[plates$Tissue %in% "breast",]
+
+plates=plates[!(plates$Tissue %in% c("cell.lines", "mix", "urine", "saliva", "blood", "placenta", "na")),] 
+
+RGset <- read.450k.exp(targets=plates, verbose=TRUE)
+object=preprocessMinfi(RGset)
+pd=pData(object)
+
+Index=which(pd$Tissue=="thyroid" & pd$Phenotype %in% c("normal", "cancer"))
+
+sub=object[,Index]
+subpd=colData(sub)
+
+design=model.matrix(~factor(subpd$Phenotype)+factor(subpd$predictedSex))
+
+res=bumphunter(sub,design,parallel=TRUE,B=25,smooth=FALSE)
+
+cobj=cpgCollapse(sub)
+
+blocks=blockFinder(cobj$object,design,B=100)
