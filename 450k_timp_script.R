@@ -1,126 +1,72 @@
 codedir="~/Code/timp_illumina"
-plotdir="~/Dropbox/Data/Genetics/Infinium/071312_analysis"
-filedir="~/Dropbox/Data/Genetics/Infinium/071312_analysis"
-
-if (file.exists(file.path(filedir, "thy.rda"))) {
-  source(file.path(codedir, "450k_general_init.R"))
-  load(file.path(filedir, "thy.rda"))
-} else {
-
-  ##Gets only plate files and loads in basic stuff
-  source(file.path(codedir,"450k_cancer_loadin.R"))
-
-  ##Get just thy
-  dat=dat.preload(plates=plates[plates$Tissue %in% "thyroid",],filt.thresh=11)
-  ##TAKE OUT SNPS- Chris
-  x=load("/home/bst/faculty/ririzarr/projects/cegs/450/snps_chris.rda")
-  ##Winston's way: x=load(file.path("~/Dropbox/Data/Genetics/Infinium/071312_analysis", "snps_chris.rda"))
-  snps1=get(x)
-  snps1=snps1[match(rownames(dat$meth),snps1$IlmnID),]
-  keepIndex=which(snps1$SBEsnp_RefSeqID=="FALSE"&snps1$CGsnp_RefSeqID=="FALSE")
-  ##Ok - because dat is meth, unmeth, locs, everything (arrays of probes) get rid of annotation at same time
-  for(i in 1:4) dat[[i]]=dat[[i]][keepIndex,]
-    
-  
-  ##Timp single descriptor
-  dat$pd$desc=paste(dat$pd$Tissue, dat$pd$Status, dat$pd$Phenotype, sep="-")
-  
-  ##save dat file
-  save(list=c("dat"),file=file.path(filedir, "thy.rda"))
-}
-
-
-dat=dat.init(dat)
-
-
-if (file.exists(file.path(filedir, "reg.rda"))) {
-  load(file.path(filedir, "reg.rda"))
-} else {
-
-  block.hyper=block.finding(dat, grps=c("normal", "hyperplastic"), permute.num=100, cores=4)
-  block.cancer=block.finding(dat, grps=c("normal", "cancer"), permute.num=100, cores=4)
-  
-
-  dmr=dmr.find(dat, grps=c("normal", "cancer"))
-  vmr=vmr.find(dat, grps=c("normal", "cancer"))
-  
-  save(list=c("block.hyper", "block.cancer","dmr", "vmr"), file=file.path(filedir, "reg.rda"), compress="gzip")
-
-}
-
-##Plot blocks now
-pdf(file.path(plotdir, "hyperblock.pdf"), width=11, height=8.5)
-range.plot(dat, block.hyper, grp="pheno", logit=F)
-dev.off()
-
-pdf(file.path(plotdir, "hyperblockgviz.pdf"), width=11, height=8.5)
-anno.region.plot(dat, block.hyper, grp="pheno", logit=F)
-dev.off()
-
-pdf(file.path(plotdir, "cancerblock.pdf"), width=11, height=8.5)
-range.plot(dat, block.cancer, grp="pheno", logit=F)
-dev.off()
-
-pdf(file.path(plotdir, "cancerblockgviz.pdf"), width=11, height=8.5)
-anno.region.plot(dat, block.cancer, grp="pheno", logit=F)
-dev.off()
-
-
-
-sel=c("normal", "cancer")
-
-pdf(file.path(plotdir, paste0(sel[1], sel[2],"mds.pdf")), width=11, height=8.5)
-cg.cluster(dat, grps=sel)
-dev.off()
-
-##Plot dmrs
-
-pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrggplotd.pdf")), width=11, height=8.5)
-range.plot(dat, dmr, grp="pheno")
-dev.off()
-
-   
-
-##Gviz plots!
-pdf(file.path(plotdir, paste0(sel[1], sel[2], "dmrgviz.pdf")), width=11, height=8.5)
-anno.region.plot(dat, dmr)
-dev.off()
-
-##Make plots more flexible(colored lines for different sample types, colored ribbon for iqr range instead of loess 95%?  
-
-#Do a bunch of different tests, ignore permute for now
+plotdir="~/Dropbox/Data/Genetics/Infinium/102212_analysis"
+filedir="~/LData/Genetics/Infinium/102212_analysis"
 
 #####NEW RAFA EMAIL INFO
 
-library(minfiLocal)
+source(file.path(codedir,"450k_general_init.R"))
 
 require(doMC)
 registerDoMC()
 cores=4
 options(cores=cores)
 
+if (file.exists(file.path(filedir, "cancer.rda"))) {
+  load(file.path(filedir, "cancer.rda"))
+} else {
+  
+  ##Gets only plate files and loads in basic stuff
+  source(file.path(codedir,"450k_cancer_loadin.R"))
+  plates=plates[!(plates$Tissue %in% c("cell.line", "mix", "urine", "saliva", "blood", "placenta", "na")),] 
+  plates=plates[plates$Phenotype!="bad",]
+  
+  dat <- read.450k.exp(targets=plates, verbose=TRUE)
+  dat=preprocessMinfi(dat)
 
-##Gets only plate files and loads in basic stuff
-source(file.path(codedir,"450k_cancer_loadin.R"))
+  ##Add CpG Island anno info
+  dat=timp.probeanno(dat)
+  
+  save(list="dat", file=file.path(filedir, "cancer.rda"), compress="gzip")
+}
 
-##plates=plates[plates$Tissue %in% "thyroid",]
-##plates=plates[plates$Tissue %in% "breast",]
+pd=colData(dat)
 
-plates=plates[!(plates$Tissue %in% c("cell.lines", "mix", "urine", "saliva", "blood", "placenta", "na")),] 
+Index=which(pd$Tissue=="pancreas" &pd$Phenotype %in% c("normal", "canncer"))
 
-RGset <- read.450k.exp(targets=plates, verbose=TRUE)
-object=preprocessMinfi(RGset)
-pd=pData(object)
-
-Index=which(pd$Tissue=="thyroid" & pd$Phenotype %in% c("normal", "cancer"))
-
-sub=object[,Index]
+sub=dat[,Index]
 subpd=colData(sub)
+
+panc=dat[,which(pd$Tissue=="pancreas" & pd$Phenotype!="bad")]
 
 design=model.matrix(~factor(subpd$Phenotype)+factor(subpd$predictedSex))
 
-res=bumphunter(sub,design,parallel=TRUE,B=25,smooth=FALSE)
+res=bumphunter(sub,design,B=100,smooth=FALSE)
+sres=bumphunter(sub, design, B=100, smooth=T)
 
 cobj=cpgCollapse(sub)
-
 blocks=blockFinder(cobj$object,design,B=100)
+
+
+##Plot dmrs
+##Change to GRange first
+dmr=bump2grange(res$table)
+
+pdf(file.path(plotdir, paste0("dmrggplot.pdf")), width=11, height=8.5)
+range.plot(panc, dmr, grp="Phenotype", logit=F)
+dev.off()
+ 
+##Gviz plots!
+pdf(file.path(plotdir, paste0("dmrgviz.pdf")), width=11, height=8.5)
+anno.region.plot(panc, dmr, grp="Phenotype", logit=F)
+dev.off()
+
+blocky=blocks$tab
+
+##Plot blocks now
+pdf(file.path(plotdir, "blockgg.pdf"), width=11, height=8.5)
+range.plot(panc, blocky, grp="Phenotype", logit=F)
+dev.off()
+
+pdf(file.path(plotdir, "blockgviz.pdf"), width=11, height=8.5)
+anno.region.plot(panc, blocky, grp="Phenotype", logit=F)
+dev.off()
