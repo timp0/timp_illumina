@@ -109,7 +109,7 @@ range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
   
 }
 
-anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25) {
+anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir="~/Code/timp_illumina") {
   ##Plot with annotaiton objects
   
   require(Gviz)
@@ -123,7 +123,7 @@ anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25) {
   sampy=colData(dat)
 
   ##Gene Annotation
-  load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
+  load(file.path(codedir, "timp_illumina_data", "gene_island.rda"))
   values(refseq.exons)$exon=paste(values(refseq.exons)$refseq.name, values(refseq.exons)$exon.number, sep=".")
 
   for (i in 1:M) {
