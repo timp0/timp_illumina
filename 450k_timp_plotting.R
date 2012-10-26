@@ -1,3 +1,8 @@
+hclust.ward <- function(x) {
+  hc = hclust(x, method="ward")
+}
+
+
 bump2grange <- function(dmr) {
 
   ##rate are the different p values, I think?
@@ -90,10 +95,10 @@ range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
     
     ##If too many points, just plot lines(saves ugly block pictures)
     if (length(pprobes)>50) {
-      to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), alpha=.1)
+      to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess")
     } else {
       if (length(pprobes)>2) {
-        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), alpha=.1)
+        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess")
       }
       to.plot=to.plot+geom_jitter(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), alpha=0.5)
     }
@@ -194,64 +199,77 @@ anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, coded
 
 }
 
+cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5) {
+  ##This function makes a linkage tree uses unsupervised heirarchical clustering
 
-cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5) {
+  require(ggplot2)
+  require(limma)
+  require(RColorBrewer)
+  require(gplots)
+  
+  ##Do limma t-test on probes
+  probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
+
+  goody=values(probes)$pv < p.thresh & abs(values(probes)$coef)>r.thresh
+
+  sub=dat[goody,]
+
+  y=getM(sub)
+
+  d=dist(t(y), method="euclidean")
+  fit=hclust(d, method="ward")
+
+  coly=brewer.pal(9, "Set1")
+
+  sampy=factor(colData(dat)$anno)
+
+  heatmap.2(y, dendrogram="column", trace="none", labCol=colData(sub)$Sample.ID,
+                        ColSideColors=coly[sampy],  labRow="", col=brewer.pal(11, "RdYlBu"))
+
+  
+  legend(x="bottomleft", legend=levels(sampy), col=coly[factor(levels(sampy))], pch=15)
+  
+  
+  plot(fit, labels=colData(sub)$anno)
+
+  
+}
+
+cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5, volcano=F) {
   ##This function does mds of probes which show a difference, seperated by regional differences
 
   require(ggplot2)
   require(limma)
-  
-  ##Select samples that are relevant
-  Index=which(colData(dat)[[ccomp]]%in%grps)
-
-  sub=dat[,Index]
-  
-  tt=factor((colData(sub)[[ccomp]]),grps)
-
-  ##This is determined sex from data, not sex given from annotation
-  sex=factor(colData(sub)$predictedSex,c("M","F"))
-    
-  md.probes=data.frame()
-  volcano.probes=data.frame()
-  
-  probes=rowData(dat)
+  require(plyr)
 
   
-  for(type in unique(values(probes)$islrelate)) {
-    pind <- which(values(probes)$islrelate==type & !(as.character(seqnames(probes))%in%c("chrX","chrY")))
-    
-    y=getM(sub[pind,])
-  
-    ##Fit linear model, get out differences per block
-    X=model.matrix(~tt+sex)
-    fit=lmFit(y,X)
-    eb=ebayes(fit)
+  ##Do limma t-test on probes
+  probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
 
-    ##Keep just the probes which pass p-value of difference for that comparison, and are more than a logratio of 2.5 away (either 4x or 1/4)
-    pind2=pind[eb$p.value[,2] < p.thresh & abs(fit$coef[,2])>r.thresh]
-
-    ##Keep all samples for plot
-    y=getM(dat[pind2,])
-    
-    temp.volc=data.frame(probes=type, pval=eb$p.value[,2], ratio=fit$coef[,2])
-    volcano.probes=rbind(volcano.probes, temp.volc)
-
-    if (length(pind2)>1) {
-      md=cmdscale(dist(t(y)))
-      temp.md=data.frame(outcome=colData(dat)[[ccomp]], probes=type, x=md[,1], y=md[,2])
-      
-      md.probes=rbind(md.probes, temp.md)
-    }
+  ##Make volcano plot
+  volcano.probes=as.data.frame(values(probes))
+  if (volcano) {
+    print(ggplot(volcano.probes, aes(x=coef, y=pv))+geom_point()+facet_wrap(~islrelate, scales="free")+
+          theme_bw()+scale_y_log10()+labs(title="Volcano"))
   }
+  goody=which(volcano.probes$pv < p.thresh & abs(volcano.probes$coef)>r.thresh)
   
-  print(ggplot(volcano.probes, aes(x=ratio, y=pval))+geom_point()+facet_wrap(~probes, scales="free")+
-        theme_bw()+scale_y_log10()+labs(title="Volcano"))
-  if (dim(md.probes)[1]>1) {
-    print(ggplot(md.probes, aes(x=x, y=y, colour=outcome))+geom_point() + facet_wrap(~probes, scales="free")+
-          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")))
-  }
+  pass.probes=data.frame(idx=goody, type=volcano.probes$islrelate[goody])
+  
+
+  md.probes=ddply(pass.probes, .(type), function(x) {md=cmdscale(dist(t(getM(dat[x$idx,]))));
+                                                  y=data.frame(outcome=colData(dat)[[ccomp]], 
+                                                    x=md[,1], y=md[,2]); return(y)})
+                                                    
+  print(ggplot(md.probes, aes(x=x, y=y, colour=outcome))+geom_point() + facet_wrap(~type, scales="free")+
+          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-"))+ scale_colour_brewer(type="qual"))
+  
+  fullmd=cmdscale(dist(t(getM(dat[pass.probes$idx,]))))
+  fullmd.probes=data.frame(x=fullmd[,1], y=fullmd[,2], outcome=colData(dat)[[ccomp]])
+
+  print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point() +
+          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual"))
   
 }
-
 
 

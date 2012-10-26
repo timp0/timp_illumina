@@ -4,6 +4,7 @@ if (!exists("codedir")) {
 }
 
 source(file.path(codedir,"450k_timp_plotting.R"))
+source(file.path(codedir,"450k_timp_tests.R"))
 ##source(file.path(codedir, "Rafa_functions.R"))
 
 
