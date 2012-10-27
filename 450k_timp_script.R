@@ -82,7 +82,7 @@ dmr=bump2grange(res$table)
 sdmr=bump2grange(sres$table)
 
 pdf(file.path(plotdir, paste0("dmrggplot.pdf")), width=11, height=8.5)
-range.plot(panc, dmr, grp="anno", logit=F)
+gg.range.plot(panc, dmr, grp="anno", logit=F)
 dev.off()
  
 ##Gviz plots!
@@ -91,7 +91,7 @@ anno.region.plot(panc, dmr, grp="anno", logit=F)
 dev.off()
 
 pdf(file.path(plotdir, paste0("sdmrggplot.pdf")), width=11, height=8.5)
-range.plot(panc, sdmr, grp="anno", logit=F)
+gg.range.plot(panc, sdmr, grp="anno", logit=F)
 dev.off()
  
 ##Gviz plots!
@@ -103,7 +103,7 @@ blocky=blocks$tab
 
 ##Plot blocks now
 pdf(file.path(plotdir, "blockgg.pdf"), width=11, height=8.5)
-range.plot(panc, blocky, grp="anno", logit=F)
+gg.range.plot(panc, blocky, grp="anno", logit=F)
 dev.off()
 
 pdf(file.path(plotdir, "blockgviz.pdf"), width=11, height=8.5)
@@ -123,6 +123,7 @@ z=match(c("KRAS", "TP53", "CTNNB1", "CDKN2A", "MEN1", "SMAD4",
 mutblock=subsetByOverlaps(blocky,panmut[z])
 
 pdf(file.path(plotdir, "mutblock.pdf"), width=11, height=8.5)
-range.plot(panc, mutblock, grp="anno", logit=F)
+st.region.plot(panc, mutblock, grp="anno", logit=F)
+gg.range.plot(panc, mutblock, grp="anno", logit=F)
 anno.region.plot(panc, mutblock, grp="anno", logit=F)
 dev.off()

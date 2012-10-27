@@ -95,10 +95,10 @@ range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
     
     ##If too many points, just plot lines(saves ugly block pictures)
     if (length(pprobes)>50) {
-      to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess")
+      to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess", span=.1)
     } else {
       if (length(pprobes)>2) {
-        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess")
+        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess", span=.1)
       }
       to.plot=to.plot+geom_jitter(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), alpha=0.5)
     }
@@ -108,7 +108,7 @@ range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
 
     to.plot=to.plot+scale_fill_manual(values=coly, guide=F)+scale_color_manual(values=coly)
 
-    print(to.plot)       
+    print(to.plot+scale_y_continuous(limits=c(-.5, 1.5)))       
     
   }
   
@@ -199,6 +199,69 @@ anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, coded
 
 }
 
+
+st.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir="~/Code/timp_illumina") {
+  ##Plot using standard package
+
+  require(RColorBrewer)
+  
+  ##Plot first 25 regions
+  M=min(length(tab), num.plot)
+
+  ##Plot this far (in %) on either side
+  ADD=0.1
+
+  coly=brewer.pal(9, "Set1")
+
+  ##Gene Annotation
+  load(file.path(codedir, "timp_illumina_data", "gene_island.rda"))
+
+  for (i in 1:M) {
+    
+    ##Set range over which we will plot
+    extra.width=max(width(tab[i])*(1+ADD), 5e3)
+    plot.area=resize(tab[i], width=extra.width, fix="center")
+    
+    ##Find probes in that region
+
+    subdat=dat[which(rowData(dat) %in% plot.area),]
+    
+    pprobes=as.data.frame(rowData(subdat))
+    pprobes$col="red"
+    pprobes$col[pprobes$islrelate=="Shelf"]="orange"
+    pprobes$col[pprobes$islrelate=="Shore"]="green"
+    pprobes$col[pprobes$islrelate=="Island"]="blue"
+    
+    melted=dat.melt(subdat, logit=logit)
+    
+    if (logit) {
+      ylim=range(melted$value)
+    } else {
+      ylim=c(0,1)
+    }
+    
+    meltsum=ddply(melted, c(grp, "start"), function(x) {data.frame(val=median(x$value), bot=quantile(x$value, .05), top=quantile(x$value, .95))})
+
+
+    meltsum$col=coly[factor(meltsum$anno)]
+    
+    
+    plot(0,0, xlim=c(start(plot.area), end(plot.area)), ylim=ylim)
+    
+    d_ply(meltsum, grp, function(x) {lines(x$start, x$val, col=x$col[1], lwd=2);
+                                   polygon(c(x$start, rev(x$start)), c(x$top, rev(x$bot)), border=NA, col=paste0(x$col[1], "33"))})
+
+    rug(pprobes$start, col=pprobes$col, lwd=2)
+
+
+    title(paste0("Chrom:", melted$seqnames[1], " Reg:", i))
+    
+    
+  }
+  
+}
+
+
 cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5) {
   ##This function makes a linkage tree uses unsupervised heirarchical clustering
 
@@ -235,6 +298,22 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
   
 }
 
+reg.cluster <- function(dat, tab, ccomp="Phenotype") {
+  ##This function does mds and scatter based on regions
+
+  pprobes=which(rowData(dat) %in% tab)
+
+  sub=dat[pprobes,]
+  
+  fullmd=cmdscale(dist(t(getM(dat[pprobes,]))))
+  fullmd.probes=data.frame(x=fullmd[,1], y=fullmd[,2], outcome=colData(dat)[[ccomp]])
+  
+    
+  print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point() +
+        theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Dark2"))
+
+}
+
 cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5, volcano=F) {
   ##This function does mds of probes which show a difference, seperated by regional differences
 
@@ -262,13 +341,13 @@ cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thr
                                                     x=md[,1], y=md[,2]); return(y)})
                                                     
   print(ggplot(md.probes, aes(x=x, y=y, colour=outcome))+geom_point() + facet_wrap(~type, scales="free")+
-          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-"))+ scale_colour_brewer(type="qual"))
+          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-"))+ scale_colour_brewer(type="qual", palette="Set1"))
   
   fullmd=cmdscale(dist(t(getM(dat[pass.probes$idx,]))))
   fullmd.probes=data.frame(x=fullmd[,1], y=fullmd[,2], outcome=colData(dat)[[ccomp]])
 
   print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point() +
-          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual"))
+          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Set1"))
   
 }
 
