@@ -47,7 +47,7 @@ dat.melt <- function(dat, logit=T) {
   return(melted)
 }
 
-range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
+range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.plot=25) {
   ##Incoming tab is a GRanges
 
   require(GenomicRanges)
@@ -86,7 +86,8 @@ range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
     rect=data.frame(xmin=start(tab[i]), xmax=end(tab[i]),
       ymin=-Inf, ymax=Inf)  
     
-    to.plot=ggplot()+theme_bw()+
+    to.plot=ggplot()+theme_bw()+theme(panel.grid.major.y=element_blank(), panel.grid.minor.y=element_blank(),
+      panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank())
       labs(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range))))
 
     ##region overlay
@@ -95,10 +96,12 @@ range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
     
     ##If too many points, just plot lines(saves ugly block pictures)
     if (length(pprobes)>50) {
-      to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess", span=.1)
+      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp, group=grp2), alpha=.2, method="loess", span=.1)
+      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp), size=1, alpha=1, method="loess", span=.1)     
     } else {
       if (length(pprobes)>2) {
-        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), se=F, alpha=.1, method="loess", span=.1)
+        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), method="loess", alpha=.1, span=100)
+        ##, se=F, alpha=.1, method="loess", span=.1)
       }
       to.plot=to.plot+geom_jitter(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), alpha=0.5)
     }
@@ -108,7 +111,7 @@ range.plot <- function(dat, tab, grp="Status", logit=T, num.plot=25) {
 
     to.plot=to.plot+scale_fill_manual(values=coly, guide=F)+scale_color_manual(values=coly)
 
-    print(to.plot+scale_y_continuous(limits=c(-.5, 1.5)))       
+    print(to.plot+scale_y_continuous(breaks=c(-0,.2, .4, .6, .8, 1))+coord_cartesian(ylim=c(0,1)))
     
   }
   
@@ -309,7 +312,7 @@ reg.cluster <- function(dat, tab, ccomp="Phenotype") {
   fullmd.probes=data.frame(x=fullmd[,1], y=fullmd[,2], outcome=colData(dat)[[ccomp]])
   
     
-  print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point() +
+  print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point(size=2.5) + 
         theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Dark2"))
 
 }

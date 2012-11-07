@@ -47,10 +47,10 @@ pancpd=colData(panc)
 pancpd$anno=NA
 ##pancpd$anno[pancpd$Notes=="NET"]="NET"
 pancpd$anno[pancpd$Notes=="adenocarcinoma"]="adenocarcinoma"
-##pancpd$anno[pancpd$Phenotype=="metastasis"]=pancpd$Notes[pancpd$Phenotype=="metastasis"]
-pancpd$anno[pancpd$Phenotype=="metastasis"]="metastasis"
-##pancpd$anno[pancpd$Tissue=="lung"&pancpd$Phenotype=="normal"]="lung.normal"
-##pancpd$anno[pancpd$Tissue=="liver"&pancpd$Phenotype=="normal"]="liver.normal"
+pancpd$anno[pancpd$Phenotype=="metastasis"]=pancpd$Notes[pancpd$Phenotype=="metastasis"]
+##pancpd$anno[pancpd$Phenotype=="metastasis"]="metastasis"
+pancpd$anno[pancpd$Tissue=="lung"&pancpd$Phenotype=="normal"]="lung.normal"
+pancpd$anno[pancpd$Tissue=="liver"&pancpd$Phenotype=="normal"]="liver.normal"
 pancpd$anno[pancpd$Phenotype=="normal"&pancpd$Tissue=="pancreas"]="pancreas.normal"
 pancpd$anno[pancpd$Phenotype=="adenoma"]="IPMN"
 
@@ -81,34 +81,29 @@ dev.off()
 dmr=bump2grange(res$table)
 sdmr=bump2grange(sres$table)
 
-pdf(file.path(plotdir, paste0("dmrggplot.pdf")), width=11, height=8.5)
-gg.range.plot(panc, dmr, grp="anno", logit=F)
-dev.off()
- 
-##Gviz plots!
-pdf(file.path(plotdir, paste0("dmrgviz.pdf")), width=11, height=8.5)
-anno.region.plot(panc, dmr, grp="anno", logit=F)
-dev.off()
-
-pdf(file.path(plotdir, paste0("sdmrggplot.pdf")), width=11, height=8.5)
-gg.range.plot(panc, sdmr, grp="anno", logit=F)
-dev.off()
+#pdf(file.path(plotdir, paste0("sdmrggplot.pdf")), width=11, height=8.5)
+#range.plot(panc, sdmr, grp="anno", logit=F)
+#dev.off()
  
 ##Gviz plots!
 pdf(file.path(plotdir, paste0("sdmrgviz.pdf")), width=11, height=8.5)
 anno.region.plot(panc, sdmr, grp="anno", logit=F)
 dev.off()
 
+pdf(file.path(plotdir, paste0("sdmrmds.pdf")), width=11, height=8.5)
+reg.cluster(panc, tab, ccomp="anno") 
+dev.off()
+
+
 blocky=blocks$tab
 
-##Plot blocks now
-pdf(file.path(plotdir, "blockgg.pdf"), width=11, height=8.5)
-gg.range.plot(panc, blocky, grp="anno", logit=F)
+pdf(file.path(plotdir, paste0("blockmds.pdf")), width=11, height=8.5)
+reg.cluster(panc, tab, ccomp="anno") 
 dev.off()
 
-pdf(file.path(plotdir, "blockgviz.pdf"), width=11, height=8.5)
-anno.region.plot(panc, blocky, grp="anno", logit=F)
-dev.off()
+#pdf(file.path(plotdir, "blockgviz.pdf"), width=11, height=8.5)
+#anno.region.plot(panc, blocky, grp="anno", logit=F)
+#dev.off()
 
 mutdir="~/Dropbox/Data/Genetics/Mutations/092512_dl"
 
@@ -123,7 +118,63 @@ z=match(c("KRAS", "TP53", "CTNNB1", "CDKN2A", "MEN1", "SMAD4",
 mutblock=subsetByOverlaps(blocky,panmut[z])
 
 pdf(file.path(plotdir, "mutblock.pdf"), width=11, height=8.5)
-st.region.plot(panc, mutblock, grp="anno", logit=F)
-gg.range.plot(panc, mutblock, grp="anno", logit=F)
+##st.region.plot(panc, mutblock, grp="anno", logit=F)
+range.plot(panc, mutblock, grp="anno", logit=F)
 anno.region.plot(panc, mutblock, grp="anno", logit=F)
+dev.off()
+
+
+panc=dat[,which(pd$Tissue=="pancreas"|
+  grepl("pancreas", pd$Notes)|
+  (pd$Phenotype=="normal"&pd$Tissue %in% c("lung", "liver")))]
+
+pancpd=colData(panc)
+
+pancpd$anno=NA
+##pancpd$anno[pancpd$Notes=="NET"]="NET"
+pancpd$anno[pancpd$Notes=="adenocarcinoma"]="adenocarcinoma"
+##pancpd$anno[pancpd$Phenotype=="metastasis"]=pancpd$Notes[pancpd$Phenotype=="metastasis"]
+pancpd$anno[pancpd$Phenotype=="metastasis"]="metastasis"
+##pancpd$anno[pancpd$Tissue=="lung"&pancpd$Phenotype=="normal"]="lung.normal"
+##pancpd$anno[pancpd$Tissue=="liver"&pancpd$Phenotype=="normal"]="liver.normal"
+pancpd$anno[pancpd$Phenotype=="normal"&pancpd$Tissue=="pancreas"]="pancreas.normal"
+pancpd$anno[pancpd$Phenotype=="adenoma"]="IPMN"
+
+panc=panc[,!is.na(pancpd$anno)]
+colData(panc)=pancpd[!is.na(pancpd$anno),]
+
+
+##Sort blocks and sdmrs on area
+
+osdmr=sdmr[order(-values(sdmr)$area )]
+
+barea=values(blocky)$seg.mean*values(blocky)$num.mark
+
+normy=colData(panc)$anno=="pancreas.normal"
+cancy=colData(panc)$anno=="adenocarcinoma"
+
+bdiff=numeric(length(blocky))
+
+for (i in seq(along=blocky)) {
+  pprobes=rowData(panc) %in% blocky[i]
+  bdiff[i]=median(rowMedians(getBeta(panc[pprobes,cancy]))-
+    rowMedians(getBeta(panc[pprobes,normy])))
+}
+
+oblocky=blocky[order(-abs(bdiff))]
+
+oblocky=oblocky[(width(oblocky)>1e4)&(oblocky$num.mark>50)]
+
+
+
+##Plot blocks now
+
+pdf(file.path(plotdir, "oblockgg.pdf"), width=11, height=8.5)
+range.plot(panc, oblocky[13], grp="anno", logit=F, num.plot=100)
+dev.off()
+
+
+##Plot dmrs now
+pdf(file.path(plotdir, "osdmrgg2.pdf"), width=11, height=8.5)
+range.plot(panc, osdmr, grp="anno", logit=F, num.plot=100)
 dev.off()
