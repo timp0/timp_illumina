@@ -187,12 +187,17 @@ over.harmonic <- function () {
 
 }
 
-brown.harmonic <- function () {
+brown.harmonic <- function (m0=.5, plotdir="~/Dropbox/Temp", subdir="Ball") {
   ##Simulating brownian harmonic oscillator
-  z=ou.sim.monte(tfinal=3e1, deltat=3e1/2e2,m0=0,on.theta=1/1.1, off.theta=1/1.1)  
+  z=ou.sim.monte(tfinal=3e1, deltat=3e1/2e2,m0=m0,on.theta=1/1.1, off.theta=1/1.1)  
 
+  ##Check if output dir exists
+  if(!file.exists(file.path(plotdir, subdir))) {
+    dir.create(file.path(plotdir, subdir))
+  }
+  
   for (i in 1:length(z$t)) {
-    png( paste("Ball/b", formatC(i, digits=0, width=4, flag=0), ".png", sep=""),
+    png( file.path(plotdir, subdir, paste0("b", formatC(i, digits=0, width=4, flag=0), ".png")),
         type="cairo")
 
     spring.para.plot(z$simul[i,1])
