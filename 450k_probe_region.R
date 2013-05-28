@@ -287,25 +287,23 @@ datadir=("~/Code/timp_illumina/timp_illumina_data")
 
 save(file=file.path(datadir, "probe_obj_final.rda"), compress="gzip", list=c("gprobes", "sbe", "remap.probe"))
 
-#Checking Chris SNPs v. Winston SNPs
+#Checking MinfiLocal SNPs v. Winston SNPs
 
-filedir="~/Dropbox/Data/Genetics/Infinium/071312_analysis"
+#Get SNPs
+library(minfiLocal)
+data(list="snpAnno134")
+minfi.snp <- get("snpAnno134")
 
-x=load(file.path(filedir, "snps_chris.rda"))
-snps.chris=get(x)
+#From Amy - how to use the snpAnno on data
+#unnorm=preprocessMinfi(RGset,quantileNormalize=FALSE)
+#unnorm=addSnpAnno(unnorm)
 
+idx=match(rownames(minfi.snp), values(remap.probe)$name)
 
-
-idx=match(rownames(snps.chris), values(remap.probe)$name)
-
-#Check if probe locations match
-
-z=start(remap.probe[idx])==snps.chris$PrStart
-
-#Only the weird ch.# probes don't match up in location
-
-z=values(gprobes[idx])$sbe.snp.boo==(snps.chris$SBEsnp_RefSeqID!="FALSE")
-a=snps.chris[!z,]
+z=values(gprobes[idx])$sbe.snp.boo==(minfi.snp$SBEsnp_RefSeqID!="FALSE")
+a=minfi.snp[!z,]
 b=sbe[idx[!z]]
 
+filedir="~/LData/Genetics/Infinium/052813_snps"
 
+write.csv(minfi.snp, file=file.path(filedir, "minfi_snptable.csv"),quote=F)
