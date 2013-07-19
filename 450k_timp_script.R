@@ -1,8 +1,7 @@
 codedir="~/Code/timp_illumina"
-plotdir="~/Dropbox/Data/Genetics/Infinium/102212_analysis"
-filedir="~/LData/Genetics/Infinium/102212_analysis"
-
-#####NEW RAFA EMAIL INFO
+plotdir="~/Dropbox/Data/Genetics/Infinium/071313_analysis"
+filedir="/mithril/homes/timp/LData/Genetics/Infinium/071313_analysis"
+expdatapath="/mithril/Data/Infinium"
 
 source(file.path(codedir,"450k_general_init.R"))
 
@@ -18,10 +17,12 @@ if (file.exists(file.path(filedir, "cancer.rda"))) {
   
   ##Gets only plate files and loads in basic stuff
   source(file.path(codedir,"450k_cancer_loadin.R"))
-  plates=plates[!(plates$Tissue %in% c("cell.line", "mix", "urine", "saliva", "blood", "placenta", "na")),] 
+  plates=plates[!(plates$Tissue %in% c("cell.line", "mix", "urine", "saliva", "blood", "placenta", "na")),]
+  ##Filter data we don't have
+  plates=plates[plates$Basename!="character(0)",]
   plates=plates[plates$Phenotype!="bad",]
   
-  dat <- read.450k.exp(targets=plates, verbose=TRUE)
+  dat <- read.450k.exp(targets=plates, verbose=TRUE) 
   dat=preprocessMinfi(dat)
 
   ##Add CpG Island anno info
@@ -61,11 +62,12 @@ colData(panc)=pancpd[!is.na(pancpd$anno),]
 
 design=model.matrix(~factor(subpd$Phenotype)+factor(subpd$predictedSex))
 
-res=bumphunter(sub,design,B=100,smooth=FALSE)
-sres=bumphunter(sub, design, B=100, smooth=T)
+res=bumphunter(sub,design,B=100,smooth=FALSE, pickCutoff=T)
+sres=bumphunter(sub, design, B=100, pickCutoff=T)
 
 cobj=cpgCollapse(sub)
-blocks=blockFinder(cobj$object,design,B=100)
+blocks=blockFinder(cobj$object,design,B=100, pickCutoff=T)
+
 
 ##Plot clusters
 pdf(file.path(plotdir, paste0("mds.pdf")), width=11, height=8.5)
@@ -81,9 +83,9 @@ dev.off()
 dmr=bump2grange(res$table)
 sdmr=bump2grange(sres$table)
 
-#pdf(file.path(plotdir, paste0("sdmrggplot.pdf")), width=11, height=8.5)
-#range.plot(panc, sdmr, grp="anno", logit=F)
-#dev.off()
+pdf(file.path(plotdir, paste0("sdmrggplot.pdf")), width=11, height=8.5)
+range.plot(panc, sdmr, grp="anno", logit=F)
+dev.off()
  
 ##Gviz plots!
 pdf(file.path(plotdir, paste0("sdmrgviz.pdf")), width=11, height=8.5)
@@ -91,19 +93,19 @@ anno.region.plot(panc, sdmr, grp="anno", logit=F)
 dev.off()
 
 pdf(file.path(plotdir, paste0("sdmrmds.pdf")), width=11, height=8.5)
-reg.cluster(panc, tab, ccomp="anno") 
+reg.cluster(panc, sdmr, ccomp="anno",namey="phenotype")
 dev.off()
 
 
-blocky=blocks$tab
+blocky=bump2grange(blocks$tab)
 
 pdf(file.path(plotdir, paste0("blockmds.pdf")), width=11, height=8.5)
-reg.cluster(panc, tab, ccomp="anno") 
+reg.cluster(panc, blocky, ccomp="anno") 
 dev.off()
 
-#pdf(file.path(plotdir, "blockgviz.pdf"), width=11, height=8.5)
-#anno.region.plot(panc, blocky, grp="anno", logit=F)
-#dev.off()
+pdf(file.path(plotdir, "blockgviz.pdf"), width=11, height=8.5)
+anno.region.plot(panc, blocky, grp="anno", logit=F)
+dev.off()
 
 mutdir="~/Dropbox/Data/Genetics/Mutations/092512_dl"
 
@@ -112,13 +114,12 @@ load(file.path(mutdir, "muts.rda"))
 
 panmut=cosmic.mutation$pancreas
 
-z=match(c("KRAS", "TP53", "CTNNB1", "CDKN2A", "MEN1", "SMAD4",
-  "GNAS", "APC", "VHL", "MLL3", "DAXX"), values(panmut)$gene.name)
+z=values(panmut)$gene.name %in% c("KRAS", "TP53", "CTNNB1", "CDKN2A", "MEN1", "SMAD4",
+    "GNAS", "APC", "VHL", "MLL3", "DAXX")
 
 mutblock=subsetByOverlaps(blocky,panmut[z])
 
 pdf(file.path(plotdir, "mutblock.pdf"), width=11, height=8.5)
-##st.region.plot(panc, mutblock, grp="anno", logit=F)
 range.plot(panc, mutblock, grp="anno", logit=F)
 anno.region.plot(panc, mutblock, grp="anno", logit=F)
 dev.off()
@@ -163,7 +164,7 @@ for (i in seq(along=blocky)) {
 
 oblocky=blocky[order(-abs(bdiff))]
 
-oblocky=oblocky[(width(oblocky)>1e4)&(oblocky$num.mark>50)]
+#oblocky=oblocky[(width(oblocky)>1e4)&(oblocky$num.mark>50)]
 
 
 

@@ -77,7 +77,7 @@ range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.pl
     plot.range=resize(tab[i], width=extra.width, fix="center")
 
     ##Find probes in that region
-    pprobes=which(rowData(dat) %in% plot.range)
+    pprobes=which(rowData(dat) %over% plot.range)
 
     subdat=dat[pprobes,]
 
@@ -142,7 +142,7 @@ anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, coded
     
     ##Find probes in that region
 
-    subdat=dat[which(rowData(dat) %in% plot.area),]
+    subdat=dat[which(rowData(dat) %over% plot.area),]
     
     pprobes=rowData(subdat)
     
@@ -227,7 +227,7 @@ st.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir
     
     ##Find probes in that region
 
-    subdat=dat[which(rowData(dat) %in% plot.area),]
+    subdat=dat[which(rowData(dat) %over% plot.area),]
     
     pprobes=as.data.frame(rowData(subdat))
     pprobes$col="red"
@@ -301,10 +301,10 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
   
 }
 
-reg.cluster <- function(dat, tab, ccomp="Phenotype") {
+reg.cluster <- function(dat, tab, ccomp="Phenotype", namey="testplot") {
   ##This function does mds and scatter based on regions
 
-  pprobes=which(rowData(dat) %in% tab)
+  pprobes=which(rowData(dat) %over% tab)
 
   sub=dat[pprobes,]
   
@@ -313,7 +313,7 @@ reg.cluster <- function(dat, tab, ccomp="Phenotype") {
   
     
   print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point(size=2.5) + 
-        theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Dark2"))
+        theme_bw()+labs(title=namey) + scale_colour_brewer(type="qual", palette="Dark2"))
 
 }
 
