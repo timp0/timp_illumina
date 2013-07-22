@@ -23,7 +23,7 @@ if (file.exists(file.path(filedir, "cancer.rda"))) {
   plates=plates[plates$Phenotype!="bad",]
   
   dat <- read.450k.exp(targets=plates, verbose=TRUE) 
-  dat=preprocessMinfi(dat)
+  dat=preprocessQuantile(dat)
 
   ##Add CpG Island anno info
   dat=timp.probeanno(dat)
@@ -108,7 +108,6 @@ anno.region.plot(panc, blocky, grp="anno", logit=F)
 dev.off()
 
 mutdir="~/Dropbox/Data/Genetics/Mutations/092512_dl"
-
 #Mutation tables
 load(file.path(mutdir, "muts.rda"))
 
@@ -177,5 +176,6 @@ dev.off()
 
 ##Plot dmrs now
 pdf(file.path(plotdir, "osdmrgg2.pdf"), width=11, height=8.5)
+
 range.plot(panc, osdmr, grp="anno", logit=F, num.plot=100)
 dev.off()

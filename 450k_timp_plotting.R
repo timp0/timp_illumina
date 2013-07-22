@@ -39,7 +39,7 @@ dat.melt <- function(dat, logit=T) {
   ##Label columns apporpriately of melted matrix
   names(melted)=c("pid", "sid", "value")
   panno=rowData(dat)
-  sanno=colData(dat)
+  sanno=as.data.frame(colData(dat))
   ##Add probe annotation - because duplicates in rownames of gprobes->data.frame, row.names=NULL
   melted=cbind(melted, as.data.frame(panno[match(melted$pid, names(panno))], row.names=NULL))
   ##Add sample annotation
