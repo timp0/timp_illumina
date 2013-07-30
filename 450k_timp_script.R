@@ -33,8 +33,86 @@ if (file.exists(file.path(filedir, "cancer.rda"))) {
 
 pd=colData(dat)
 
+##Let's get each of the tissue blocks and dmrs
+
+colon.reg=canc.dmrblock(dat, tis="colon")
+
+save(file=file.path(filedir, "colon_cancer.rda"), compress="gzip", list=c("colon.reg"))
+
+breast.reg=canc.dmrblock(dat, tis="breast")
+
+save(file=file.path(filedir, "breast_cancer.rda"), compress="gzip", list=c("breast.reg"))
+
+lung.reg=canc.dmrblock(dat, tis="lung")
+
+save(file=file.path(filedir, "lung_cancer.rda"), compress="gzip", list=c("lung.reg"))
+
+kidney.reg=canc.dmrblock(dat, tis="kidney")
+
+save(file=file.path(filedir, "kidney_cancer.rda"), compress="gzip", list=c("kidney.reg"))
+
+
+##Make this into a plotting function, so as not to call it constantly
+
+##Colon as a start
+coly=dat[,(pd$Tissue=="colon"|((pd$Tissue%in%c("liver","lung"))&(pd$Phenotype!="cancer")))]
+colypd=colData(coly)
+
+colypd$anno=NA
+colypd$anno[colypd$Tissue=="colon" & colypd$Phenotype=="normal"]="colon.normal"
+colypd$anno[colypd$Tissue=="lung" & colypd$Phenotype=="normal"]="lung.normal"
+colypd$anno[colypd$Tissue=="liver" & colypd$Phenotype=="normal"]="liver.normal"
+colypd$anno[colypd$Tissue=="colon" & colypd$Phenotype=="adenoma"]="colon.adenoma"
+colypd$anno[colypd$Tissue=="colon" & colypd$Phenotype=="cancer"]="colon.cancer"
+colypd$anno[colypd$Notes=="colon.liver.metastasis"]="colon.liver.metastasis"
+colypd$anno[colypd$Notes=="colon.lung.metastasis"]="colon.lung.metastasis"
+
+coly=coly[,!is.na(colypd$anno)]
+colData(coly)=colypd[!is.na(colypd$anno),]
+
+compname="colon"
+
+##Plot clusters
+pdf(file.path(plotdir, paste0("mds_", compname, ".pdf")), width=11, height=8.5)
+cg.cluster(coly, ccomp="anno", grps=c("colon.normal", "colon.cancer"))
+dev.off()
+
+pdf(file.path(plotdir, paste0("linkage_", compname, ".pdf")), width=11, height=8.5)
+cg.dendro(coly, ccomp="anno", grps=c("colon.normal", "colon.cancer"))
+dev.off()
+
+##Plot dmrs
+
+pdf(file.path(plotdir, paste0("dmrggplot_", compname, ".pdf")), width=11, height=8.5)
+range.plot(coly, colon.dmr, grp="anno", logit=F)
+dev.off()
+ 
+pdf(file.path(plotdir, paste0("dmrgviz_", compname, ".pdf")), width=11, height=8.5)
+anno.region.plot(coly, colon.dmr, grp="anno", logit=F)
+dev.off()
+
+pdf(file.path(plotdir, paste0("dmrmds_", compname, ".pdf")), width=11, height=8.5)
+reg.cluster(coly, colon.dmr, ccomp="anno",namey="phenotype")
+dev.off()
+
+##Plot blocks
+
+
+pdf(file.path(plotdir, paste0("blockmds_", compname, ".pdf")), width=11, height=8.5)
+reg.cluster(coly, colon.block, ccomp="anno") 
+dev.off()
+
+pdf(file.path(plotdir, paste0("blockgviz_", compname, ".pdf")), width=11, height=8.5)
+anno.region.plot(coly, colon.block, grp="anno", logit=F)
+dev.off()
+
+pdf(file.path(plotdir, paste0("blockggplot_", compname, ".pdf")), width=11, height=8.5)
+range.plot(coly, colon.block, grp="anno", logit=F)
+dev.off()
+
+     
 Index=which(pd$Tissue=="pancreas" &
-  (pd$Phenotype=="normal"|pd$Notes=="adenocarcinoma"))
+      (pd$Phenotype=="normal"|pd$Notes=="adenocarcinoma"))
 
 sub=dat[,Index]
 subpd=colData(sub)

@@ -47,7 +47,7 @@ dat.melt <- function(dat, logit=T) {
   return(melted)
 }
 
-range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.plot=25) {
+range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.plot=25, span=.5) {
   ##Incoming tab is a GRanges
 
   require(GenomicRanges)
@@ -86,22 +86,25 @@ range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.pl
     rect=data.frame(xmin=start(tab[i]), xmax=end(tab[i]),
       ymin=-Inf, ymax=Inf)  
     
-    to.plot=ggplot()+theme_bw()+theme(panel.grid.major.y=element_blank(), panel.grid.minor.y=element_blank(),
-      panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank())
-      labs(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range))))
+    to.plot=ggplot()+theme_bw()+theme(panel.grid.major.y=element_blank(),
+        panel.grid.minor.y=element_blank(),panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank())
+    labs(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range))))
 
     ##region overlay
-    to.plot=to.plot+geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), colour="grey", alpha=.05)
 
-    
+    to.plot=to.plot+geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), colour="grey", alpha=.05)
+   
     ##If too many points, just plot lines(saves ugly block pictures)
     if (length(pprobes)>50) {
-      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp, group=grp2), alpha=.2, method="loess", span=.1)
-      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp), size=1, alpha=1, method="loess", span=.1)     
+        to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp, group=grp2),
+           alpha=.2, method="loess", span=span)
+      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp), size=1,
+          alpha=1, method="loess", span=span)     
     } else {
       if (length(pprobes)>2) {
-        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), method="loess", alpha=.1, span=100)
-        ##, se=F, alpha=.1, method="loess", span=.1)
+        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp),
+            method="loess", alpha=.1, span=span)
+
       }
       to.plot=to.plot+geom_jitter(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), alpha=0.5)
     }
