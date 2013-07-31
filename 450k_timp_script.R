@@ -72,14 +72,9 @@ colData(coly)=colypd[!is.na(colypd$anno),]
 
 compname="colon"
 
-##Plot clusters
-pdf(file.path(plotdir, paste0("mds_", compname, ".pdf")), width=11, height=8.5)
-cg.cluster(coly, ccomp="anno", grps=c("colon.normal", "colon.cancer"))
-dev.off()
+sig.probe.plot(coly, plotdir=plotdir, ccomp="anno", grps=c("colon.normal", "colon.cancer"))
 
-pdf(file.path(plotdir, paste0("linkage_", compname, ".pdf")), width=11, height=8.5)
-cg.dendro(coly, ccomp="anno", grps=c("colon.normal", "colon.cancer"))
-dev.off()
+
 
 ##Plot dmrs
 

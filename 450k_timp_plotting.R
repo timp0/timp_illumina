@@ -268,7 +268,7 @@ st.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir
 }
 
 
-cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5) {
+cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5, var=F) {
   ##This function makes a linkage tree uses unsupervised heirarchical clustering
 
   require(ggplot2)
@@ -276,8 +276,15 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
   require(RColorBrewer)
   require(gplots)
   
-  ##Do limma t-test on probes
-  probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
+
+  if (var) {
+      ##Do F-test on probes
+      probes=cg.vmtest(dat, ccomp=ccomp, grps=grps)
+  } else {
+      ##Do limma t-test on probes
+      probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
+  }
+
 
   goody=values(probes)$pv < p.thresh & abs(values(probes)$coef)>r.thresh
 
@@ -320,41 +327,71 @@ reg.cluster <- function(dat, tab, ccomp="Phenotype", namey="testplot") {
 
 }
 
-cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5, volcano=F) {
+cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), var=F,
+                       p.thresh=1e-5, r.thresh=2.5, volcano=F, top=NULL) {
   ##This function does mds of probes which show a difference, seperated by regional differences
 
   require(ggplot2)
   require(limma)
   require(plyr)
 
-  
-  ##Do limma t-test on probes
-  probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
 
+  if (var) {
+      ##Do F-test on probes
+      probes=cg.vmtest(dat)
+  } else {
+      ##Do limma t-test on probes
+      probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
+  }
+
+ 
   ##Make volcano plot
   volcano.probes=as.data.frame(values(probes))
   if (volcano) {
-    print(ggplot(volcano.probes, aes(x=coef, y=pv))+geom_point()+facet_wrap(~islrelate, scales="free")+
-          theme_bw()+scale_y_log10()+labs(title="Volcano"))
+      print(ggplot(volcano.probes, aes(x=coef, y=pv))+geom_point()+facet_wrap(~islrelate, scales="free")+
+            theme_bw()+scale_y_log10()+labs(title="Volcano"))
   }
+  
   goody=which(volcano.probes$pv < p.thresh & abs(volcano.probes$coef)>r.thresh)
   
   pass.probes=data.frame(idx=goody, type=volcano.probes$islrelate[goody])
   
-
+  
   md.probes=ddply(pass.probes, .(type), function(x) {md=cmdscale(dist(t(getM(dat[x$idx,]))));
-                                                  y=data.frame(outcome=colData(dat)[[ccomp]], 
-                                                    x=md[,1], y=md[,2]); return(y)})
-                                                    
+                                                     y=data.frame(outcome=colData(dat)[[ccomp]], 
+                                                         x=md[,1], y=md[,2]); return(y)})
+  
   print(ggplot(md.probes, aes(x=x, y=y, colour=outcome))+geom_point() + facet_wrap(~type, scales="free")+
-          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-"))+ scale_colour_brewer(type="qual", palette="Set1"))
+        theme_bw()+labs(title=paste(grps[1], grps[2], sep="-"))+ scale_colour_brewer(type="qual", palette="Set1"))
   
   fullmd=cmdscale(dist(t(getM(dat[pass.probes$idx,]))))
   fullmd.probes=data.frame(x=fullmd[,1], y=fullmd[,2], outcome=colData(dat)[[ccomp]])
-
+  
   print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point() +
-          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Set1"))
+        theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Set1"))
   
 }
 
 
+
+sig.probe.plot <- function(dat, plotdir="~/Dropbox/temp", ccomp="anno", compname="colon",
+                           grps=c("colon.normal", "colon.cancer")) {
+    ##this function takes a set of data, and makes comparison plots for the most significantly
+    ##different via t-test and F-test
+    
+    
+    ##Plot clusters on t-test
+    pdf(file.path(plotdir, paste0("mds_tt_", compname, ".pdf")), width=11, height=8.5)
+    cg.cluster(coly, ccomp="anno", grps=grps, volcano=T)
+    cg.dendro(coly, ccomp="anno", grps=grps)
+    dev.off()
+
+
+    ##Plot clusters on F-test
+    pdf(file.path(plotdir, paste0("mds_ft_", compname, ".pdf")), width=11, height=8.5)
+    cg.cluster(coly, ccomp="anno", grps=grps, var=T, volcano=T)
+    cg.dendro(coly, ccomp="anno", grps=grps, var=T)
+    dev.off()    
+}
+    
+    
