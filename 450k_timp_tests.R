@@ -103,8 +103,11 @@ canc.dmrblock <- function(dat, tis="colon") {
     subcoly=dat[,(pd$Tissue==tis & pd$Phenotype%in%c("normal", "cancer"))]
     subcolypd=colData(subcoly)
 
-    design=model.matrix(~factor(subcolypd$Phenotype)+factor(subcolypd$predictedSex))
-
+    if (length(unique(subcolypd$predictedSex))<2) {
+        design=model.matrix(~factor(subcolypd$Phenotype))
+    } else {
+        design=model.matrix(~factor(subcolypd$Phenotype)+factor(subcolypd$predictedSex))
+    }
 
     res=bumphunter(subcoly, design, B=100, pickCutoff=T)
 
@@ -121,22 +124,24 @@ cg.dmtest <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer")) {
   require(limma)
   
   ##Select samples that are relevant
-  Index=which(colData(dat)[[ccomp]]%in%grps)
+  Index=colData(dat)[[ccomp]]%in%grps
 
   sub=dat[,Index]
   
   tt=factor((colData(sub)[[ccomp]]),grps)
 
-  ##This is determined sex from data, not sex given from annotation
-  sex=factor(colData(sub)$predictedSex,c("M","F"))
-    
-  
   probes=rowData(dat)
   
   y=getM(sub)
   
   ##Fit linear model, get out differences per block
-  X=model.matrix(~tt+sex)
+
+  if (length(unique(colData(sub)$predictedSex))<2) {
+      X=model.matrix(~tt)
+  } else {
+      X=model.matrix(~tt+factor(colData(sub)$predictedSex))
+  }
+  
   fit=lmFit(y,X)
   eb=ebayes(fit)
   
@@ -172,9 +177,9 @@ cg.vmtest <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer")) {
     
     var.grp1.beta=rowVars(grp1.beta, na.rm=T)
     var.grp2.beta=rowVars(grp2.beta, na.rm=T)
-    values(probes)$coef=var.grp1.beta/var.grp2.beta
+    values(probes)$coef=var.grp2.beta/var.grp1.beta
     
-    values(probes)$pv=pf(values(probes)$coef,df1=n1, df2=n2, lower.tail=F)
+    values(probes)$pv=pf(values(probes)$coef,df1=n2, df2=n1, lower.tail=F)
     
 
     return(probes)

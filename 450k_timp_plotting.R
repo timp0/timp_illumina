@@ -297,7 +297,7 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
 
   coly=brewer.pal(9, "Set1")
 
-  sampy=factor(colData(dat)$anno)
+  sampy=factor(colData(dat)[[ccomp]])
 
   heatmap.2(y, dendrogram="column", trace="none", labCol=colData(sub)$Sample.ID,
                         ColSideColors=coly[sampy],  labRow="", col=brewer.pal(11, "RdYlBu"))
@@ -311,7 +311,7 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
   
 }
 
-reg.cluster <- function(dat, tab, ccomp="Phenotype", namey="testplot") {
+reg.cluster <- function(dat, tab, ccomp="Phenotype") {
   ##This function does mds and scatter based on regions
 
   pprobes=which(rowData(dat) %over% tab)
@@ -323,7 +323,7 @@ reg.cluster <- function(dat, tab, ccomp="Phenotype", namey="testplot") {
   
     
   print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point(size=2.5) + 
-        theme_bw()+labs(title=namey) + scale_colour_brewer(type="qual", palette="Dark2"))
+        theme_bw()+labs(title=ccomp) + scale_colour_brewer(type="qual", palette="Dark2"))
 
 }
 
@@ -374,24 +374,49 @@ cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), var=F
 
 
 
-sig.probe.plot <- function(dat, plotdir="~/Dropbox/temp", ccomp="anno", compname="colon",
-                           grps=c("colon.normal", "colon.cancer")) {
+sig.probe.plot <- function(dat, plotdir="~/Dropbox/Temp", ccomp="anno", compname="colon",
+                           grps=c("colon.normal", "colon.cancer"), volcano=F) {
     ##this function takes a set of data, and makes comparison plots for the most significantly
     ##different via t-test and F-test
     
     
     ##Plot clusters on t-test
     pdf(file.path(plotdir, paste0("mds_tt_", compname, ".pdf")), width=11, height=8.5)
-    cg.cluster(coly, ccomp="anno", grps=grps, volcano=T)
-    cg.dendro(coly, ccomp="anno", grps=grps)
+    cg.cluster(dat, ccomp=ccomp, grps=grps, volcano=volcano)
+    cg.dendro(dat, ccomp=ccomp, grps=grps)
     dev.off()
 
 
     ##Plot clusters on F-test
     pdf(file.path(plotdir, paste0("mds_ft_", compname, ".pdf")), width=11, height=8.5)
-    cg.cluster(coly, ccomp="anno", grps=grps, var=T, volcano=T)
-    cg.dendro(coly, ccomp="anno", grps=grps, var=T)
+    cg.cluster(dat, ccomp=ccomp, grps=grps, var=T, volcano=volcano)
+    cg.dendro(dat, ccomp=ccomp, grps=grps, var=T)
+    dev.off()
+
+    ##Plot clusters on opp F-test
+    pdf(file.path(plotdir, paste0("mds_ft_opp", compname, ".pdf")), width=11, height=8.5)
+    cg.cluster(dat, ccomp=ccomp, grps=rev(grps), var=T, volcano=volcano)
+    cg.dendro(dat, ccomp=ccomp, grps=rev(grps), var=T)
     dev.off()    
+
 }
+
+variety.reg.plot <- function(dat, regs, grp="anno", compname="colon", logit=F,
+                             plotdir="~Dropbox/Temp") {
+    ##This function plots regions with various plots
     
+    pdf(file.path(plotdir, paste0("ggplot_", compname, ".pdf")), width=11, height=8.5)
+    range.plot(dat, regs, grp=grp, logit=logit)
+    dev.off()
+    
+    pdf(file.path(plotdir, paste0("gviz_", compname, ".pdf")), width=11, height=8.5)
+    anno.region.plot(dat, regs, grp=grp, logit=logit)
+    dev.off()
+    
+    pdf(file.path(plotdir, paste0("mds_", compname, ".pdf")), width=11, height=8.5)
+    reg.cluster(dat, regs, ccomp=grp)
+    dev.off()
+
+}
+
     

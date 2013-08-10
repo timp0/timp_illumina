@@ -33,152 +33,197 @@ if (file.exists(file.path(filedir, "cancer.rda"))) {
 
 pd=colData(dat)
 
-##Let's get each of the tissue blocks and dmrs
+if (file.exists(file.path(filedir, "colon_cancer.rda"))) {
+    load(file=file.path(filedir,"colon_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    colon.reg=canc.dmrblock(dat, tis="colon")
+    save(file=file.path(filedir, "colon_cancer.rda"), compress="gzip", list=c("colon.reg"))
+}
 
-colon.reg=canc.dmrblock(dat, tis="colon")
+if (file.exists(file.path(filedir, "breast_cancer.rda"))) {
+    load(file=file.path(filedir,"breast_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    breast.reg=canc.dmrblock(dat, tis="breast")
+    save(file=file.path(filedir, "breast_cancer.rda"), compress="gzip", list=c("breast.reg"))
+}
 
-save(file=file.path(filedir, "colon_cancer.rda"), compress="gzip", list=c("colon.reg"))
+if (file.exists(file.path(filedir, "pancreas_cancer.rda"))) {
+    load(file=file.path(filedir,"pancreas_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    pancreas.reg=canc.dmrblock(dat, tis="pancreas")
+    save(file=file.path(filedir, "pancreas_cancer.rda"), compress="gzip", list=c("pancreas.reg"))
+}
 
-breast.reg=canc.dmrblock(dat, tis="breast")
+if (file.exists(file.path(filedir, "lung_cancer.rda"))) {
+    load(file=file.path(filedir,"lung_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    lung.reg=canc.dmrblock(dat, tis="lung")
+    save(file=file.path(filedir, "lung_cancer.rda"), compress="gzip", list=c("lung.reg"))
+}
 
-save(file=file.path(filedir, "breast_cancer.rda"), compress="gzip", list=c("breast.reg"))
-
-lung.reg=canc.dmrblock(dat, tis="lung")
-
-save(file=file.path(filedir, "lung_cancer.rda"), compress="gzip", list=c("lung.reg"))
-
-kidney.reg=canc.dmrblock(dat, tis="kidney")
-
-save(file=file.path(filedir, "kidney_cancer.rda"), compress="gzip", list=c("kidney.reg"))
+if (file.exists(file.path(filedir, "kidney_cancer.rda"))) {
+    load(file=file.path(filedir,"kidney_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    kidney.reg=canc.dmrblock(dat, tis="kidney")
+    save(file=file.path(filedir, "kidney_cancer.rda"), compress="gzip", list=c("kidney.reg"))
+}
 
 
-##Make this into a plotting function, so as not to call it constantly
-
-##Colon as a start
-coly=dat[,(pd$Tissue=="colon"|((pd$Tissue%in%c("liver","lung"))&(pd$Phenotype!="cancer")))]
-colypd=colData(coly)
-
-colypd$anno=NA
-colypd$anno[colypd$Tissue=="colon" & colypd$Phenotype=="normal"]="colon.normal"
-colypd$anno[colypd$Tissue=="lung" & colypd$Phenotype=="normal"]="lung.normal"
-colypd$anno[colypd$Tissue=="liver" & colypd$Phenotype=="normal"]="liver.normal"
-colypd$anno[colypd$Tissue=="colon" & colypd$Phenotype=="adenoma"]="colon.adenoma"
-colypd$anno[colypd$Tissue=="colon" & colypd$Phenotype=="cancer"]="colon.cancer"
-colypd$anno[colypd$Notes=="colon.liver.metastasis"]="colon.liver.metastasis"
-colypd$anno[colypd$Notes=="colon.lung.metastasis"]="colon.lung.metastasis"
-
-coly=coly[,!is.na(colypd$anno)]
-colData(coly)=colypd[!is.na(colypd$anno),]
 
 compname="colon"
-
-sig.probe.plot(coly, plotdir=plotdir, ccomp="anno", grps=c("colon.normal", "colon.cancer"))
-
-
-
-##Plot dmrs
-
-pdf(file.path(plotdir, paste0("dmrggplot_", compname, ".pdf")), width=11, height=8.5)
-range.plot(coly, colon.dmr, grp="anno", logit=F)
-dev.off()
- 
-pdf(file.path(plotdir, paste0("dmrgviz_", compname, ".pdf")), width=11, height=8.5)
-anno.region.plot(coly, colon.dmr, grp="anno", logit=F)
-dev.off()
-
-pdf(file.path(plotdir, paste0("dmrmds_", compname, ".pdf")), width=11, height=8.5)
-reg.cluster(coly, colon.dmr, ccomp="anno",namey="phenotype")
-dev.off()
-
-##Plot blocks
-
-
-pdf(file.path(plotdir, paste0("blockmds_", compname, ".pdf")), width=11, height=8.5)
-reg.cluster(coly, colon.block, ccomp="anno") 
-dev.off()
-
-pdf(file.path(plotdir, paste0("blockgviz_", compname, ".pdf")), width=11, height=8.5)
-anno.region.plot(coly, colon.block, grp="anno", logit=F)
-dev.off()
-
-pdf(file.path(plotdir, paste0("blockggplot_", compname, ".pdf")), width=11, height=8.5)
-range.plot(coly, colon.block, grp="anno", logit=F)
-dev.off()
-
-     
-Index=which(pd$Tissue=="pancreas" &
-      (pd$Phenotype=="normal"|pd$Notes=="adenocarcinoma"))
-
-sub=dat[,Index]
+##Colon as a start
+sub=dat[,(pd$Tissue=="colon"|((pd$Tissue%in%c("liver","lung"))&(pd$Phenotype!="cancer")))]
 subpd=colData(sub)
 
-panc=dat[,which(pd$Tissue=="pancreas"|
-  grepl("pancreas", pd$Notes)|
-  (pd$Phenotype=="normal"&pd$Tissue %in% c("lung", "liver")))]
+subpd$anno=NA
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="normal"]="colon.normal"
+subpd$anno[subpd$Tissue=="lung" & subpd$Phenotype=="normal"]="lung.normal"
+subpd$anno[subpd$Tissue=="liver" & subpd$Phenotype=="normal"]="liver.normal"
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="adenoma"]="colon.adenoma"
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="cancer"]="colon.cancer"
+subpd$anno[subpd$Notes=="colon.liver.metastasis"]="colon.liver.metastasis"
+subpd$anno[subpd$Notes=="colon.lung.metastasis"]="colon.lung.metastasis"
 
-pancpd=colData(panc)
+sub=sub[,!is.na(subpd$anno)]
+colData(sub)=subpd[!is.na(subpd$anno),]
 
-pancpd$anno=NA
-##pancpd$anno[pancpd$Notes=="NET"]="NET"
-pancpd$anno[pancpd$Notes=="adenocarcinoma"]="adenocarcinoma"
-pancpd$anno[pancpd$Phenotype=="metastasis"]=pancpd$Notes[pancpd$Phenotype=="metastasis"]
-##pancpd$anno[pancpd$Phenotype=="metastasis"]="metastasis"
-pancpd$anno[pancpd$Tissue=="lung"&pancpd$Phenotype=="normal"]="lung.normal"
-pancpd$anno[pancpd$Tissue=="liver"&pancpd$Phenotype=="normal"]="liver.normal"
-pancpd$anno[pancpd$Phenotype=="normal"&pancpd$Tissue=="pancreas"]="pancreas.normal"
-pancpd$anno[pancpd$Phenotype=="adenoma"]="IPMN"
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="anno", grps=c("colon.normal", "colon.cancer"), compname=compname)
 
-panc=panc[,!is.na(pancpd$anno)]
-colData(panc)=pancpd[!is.na(pancpd$anno),]
-
-
-
-design=model.matrix(~factor(subpd$Phenotype)+factor(subpd$predictedSex))
-
-res=bumphunter(sub,design,B=100,smooth=FALSE, pickCutoff=T)
-sres=bumphunter(sub, design, B=100, pickCutoff=T)
-
-cobj=cpgCollapse(sub)
-blocks=blockFinder(cobj$object,design,B=100, pickCutoff=T)
+##Plot DMRs
+variety.reg.plot(sub, colon.reg$dmrs, grp="anno", compname=paste0(compname, "_dmr")
+                 ,plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, colon.reg$blocks, grp="anno", compname=paste0(compname, "_block")
+                 ,plotdir=plotdir)
 
 
-##Plot clusters
-pdf(file.path(plotdir, paste0("mds.pdf")), width=11, height=8.5)
-cg.cluster(panc, ccomp="anno", grps=c("pancreas.normal", "adenocarcinoma"))
-dev.off()
+compname="simpcolon"
+##Simple Colon
+sub=dat[,(pd$Tissue=="colon")]
+subpd=colData(sub)
 
-pdf(file.path(plotdir, paste0("linkage.pdf")), width=11, height=8.5)
-cg.dendro(panc, ccomp="anno", grps=c("pancreas.normal", "adenocarcinoma"))
-dev.off()
+subpd$anno=NA
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="normal"]="colon.normal"
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="adenoma"]="colon.adenoma"
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="cancer"]="colon.cancer"
+subpd$anno[grepl("metastasis", subpd$Notes)]="colon.metastasis"
 
-##Plot dmrs
-##Change to GRange first
-dmr=bump2grange(res$table)
-sdmr=bump2grange(sres$table)
+sub=sub[,!is.na(subpd$anno)]
+colData(sub)=subpd[!is.na(subpd$anno),]
 
-pdf(file.path(plotdir, paste0("sdmrggplot.pdf")), width=11, height=8.5)
-range.plot(panc, sdmr, grp="anno", logit=F)
-dev.off()
- 
-##Gviz plots!
-pdf(file.path(plotdir, paste0("sdmrgviz.pdf")), width=11, height=8.5)
-anno.region.plot(panc, sdmr, grp="anno", logit=F)
-dev.off()
-
-pdf(file.path(plotdir, paste0("sdmrmds.pdf")), width=11, height=8.5)
-reg.cluster(panc, sdmr, ccomp="anno",namey="phenotype")
-dev.off()
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="anno",
+               grps=c("colon.normal", "colon.cancer"), compname=compname)
 
 
-blocky=bump2grange(blocks$tab)
+##Plot DMRs
+variety.reg.plot(sub, colon.reg$dmrs, grp="anno", compname=paste0(compname, "_dmr")
+                 ,plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, colon.reg$blocks, grp="anno", compname=paste0(compname, "_block")
+                 ,plotdir=plotdir)
 
-pdf(file.path(plotdir, paste0("blockmds.pdf")), width=11, height=8.5)
-reg.cluster(panc, blocky, ccomp="anno") 
-dev.off()
 
-pdf(file.path(plotdir, "blockgviz.pdf"), width=11, height=8.5)
-anno.region.plot(panc, blocky, grp="anno", logit=F)
-dev.off()
+
+compname="pancreas"
+sub=dat[,which(pd$Tissue=="pancreas"|grepl("pancreas", pd$Notes)|
+    (pd$Phenotype=="normal"&pd$Tissue %in% c("lung", "liver")))]
+
+subpd=colData(sub)
+
+subpd$anno=NA
+subpd$anno[subpd$Notes=="NET"]="NET"
+subpd$anno[subpd$Notes=="adenocarcinoma"]="pancreas.cancer"
+subpd$anno[subpd$Phenotype=="metastasis"]=subpd$Notes[subpd$Phenotype=="metastasis"]
+subpd$anno[subpd$Tissue=="lung"&subpd$Phenotype=="normal"]="lung.normal"
+subpd$anno[subpd$Tissue=="liver"&subpd$Phenotype=="normal"]="liver.normal"
+subpd$anno[subpd$Phenotype=="normal"&subpd$Tissue=="pancreas"]="pancreas.normal"
+subpd$anno[subpd$Phenotype=="adenoma"]="IPMN"
+
+sub=sub[,!is.na(subpd$anno)]
+colData(sub)=subpd[!is.na(subpd$anno),]
+
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="anno", grps=c("pancreas.normal", "pancreas.cancer"), compname=compname)
+
+
+
+##Plot DMRs
+variety.reg.plot(sub, pancreas.reg$dmrs, grp="anno", compname=paste0(compname, "_dmr"), plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, pancreas.reg$blocks, grp="anno", compname=paste0(compname, "_block"), plotdir=plotdir)
+
+
+compname="pancreassimple"
+sub=dat[,which(pd$Tissue=="pancreas"|grepl("pancreas", pd$Notes))]
+
+subpd=colData(sub)
+
+subpd$anno=NA
+subpd$anno[subpd$Notes=="adenocarcinoma"]="pancreas.cancer"
+subpd$anno[subpd$Phenotype=="metastasis"]="metastasis"
+subpd$anno[subpd$Phenotype=="normal"&subpd$Tissue=="pancreas"]="pancreas.normal"
+subpd$anno[subpd$Phenotype=="adenoma"]="IPMN"
+
+
+sub=sub[,!is.na(subpd$anno)]
+colData(sub)=subpd[!is.na(subpd$anno),]
+
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="anno", grps=c("pancreas.normal", "pancreas.cancer"), compname=compname)
+
+
+##Plot DMRs
+variety.reg.plot(sub, pancreas.reg$dmrs, grp="anno", compname=paste0(compname, "_dmr"), plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, pancreas.reg$blocks, grp="anno", compname=paste0(compname, "_block"), plotdir=plotdir)
+
+
+
+compname="breast"
+sub=dat[,pd$Tissue=="breast"]
+
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="Phenotype", grps=c("normal", "cancer"), compname=compname)
+
+##Plot DMRs
+variety.reg.plot(sub, breast.reg$dmrs, grp="Phenotype", compname=paste0(compname, "_dmr"), plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, breast.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
+
+
+
+compname="lung"
+sub=dat[,pd$Tissue=="lung"]
+
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="Phenotype", grps=c("normal", "cancer"), compname=compname)
+
+##Plot DMRs
+variety.reg.plot(sub, lung.reg$dmrs, grp="Phenotype", compname=paste0(compname, "_dmr"), plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, lung.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
+
+
+compname="kidney"
+sub=dat[,pd$Tissue=="kidney"]
+
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="Phenotype", grps=c("normal", "cancer"), compname=compname)
+
+##Plot DMRs
+variety.reg.plot(sub, kidney.reg$dmrs, grp="Phenotype", compname=paste0(compname, "_dmr"), plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, kidney.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
+
+
+
 
 mutdir="~/Dropbox/Data/Genetics/Mutations/092512_dl"
 #Mutation tables
