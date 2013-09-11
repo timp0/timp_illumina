@@ -1,5 +1,5 @@
 codedir="~/Code/timp_illumina"
-plotdir="~/Dropbox/Data/Genetics/Infinium/071313_analysis"
+plotdir="~/Dropbox/Data/Genetics/Infinium/081313_analysis"
 filedir="/mithril/homes/timp/LData/Genetics/Infinium/071313_analysis"
 expdatapath="/mithril/Data/Infinium"
 
@@ -71,6 +71,15 @@ if (file.exists(file.path(filedir, "kidney_cancer.rda"))) {
     ##Let's get each of the tissue blocks and dmrs
     kidney.reg=canc.dmrblock(dat, tis="kidney")
     save(file=file.path(filedir, "kidney_cancer.rda"), compress="gzip", list=c("kidney.reg"))
+}
+
+
+if (file.exists(file.path(filedir, "thyroid_cancer.rda"))) {
+    load(file=file.path(filedir,"thyroid_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    thyroid.reg=canc.dmrblock(dat, tis="thyroid")
+    save(file=file.path(filedir, "thyroid_cancer.rda"), compress="gzip", list=c("thyroid.reg"))
 }
 
 
@@ -223,77 +232,85 @@ variety.reg.plot(sub, kidney.reg$dmrs, grp="Phenotype", compname=paste0(compname
 variety.reg.plot(sub, kidney.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
 
 
+compname="thyroid"
+sub=dat[,pd$Tissue=="thyroid"]
+
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="Phenotype", grps=c("normal", "cancer"), compname=compname)
+
+##Plot DMRs
+variety.reg.plot(sub, thyroid.reg$dmrs, grp="Phenotype", compname=paste0(compname, "_dmr"), plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, thyroid.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
 
 
 mutdir="~/Dropbox/Data/Genetics/Mutations/092512_dl"
 #Mutation tables
 load(file.path(mutdir, "muts.rda"))
 
-panmut=cosmic.mutation$pancreas
+#panmut=cosmic.mutation$pancreas
 
-z=values(panmut)$gene.name %in% c("KRAS", "TP53", "CTNNB1", "CDKN2A", "MEN1", "SMAD4",
-    "GNAS", "APC", "VHL", "MLL3", "DAXX")
+#z=values(panmut)$gene.name %in% c("KRAS", "TP53", "CTNNB1", "CDKN2A", "MEN1", "SMAD4",
+#    "GNAS", "APC", "VHL", "MLL3", "DAXX")
 
-mutblock=subsetByOverlaps(blocky,panmut[z])
+#mutblock=subsetByOverlaps(pancreas.reg$blocks,panmut[z])
 
-pdf(file.path(plotdir, "mutblock.pdf"), width=11, height=8.5)
-range.plot(panc, mutblock, grp="anno", logit=F)
-anno.region.plot(panc, mutblock, grp="anno", logit=F)
-dev.off()
+#pdf(file.path(plotdir, "pancmutblock.pdf"), width=11, height=8.5)
+#range.plot(panc, mutblock, grp="anno", logit=F)
+#anno.region.plot(panc, mutblock, grp="anno", logit=F)
+#dev.off()
+
+##colon, breast, lung, thyroid, pancreas
+
+mut.tab=data.frame(row.names=c("colon.mut", "breast.mut", "kidney.mut", "lung.mut", "pancreas.mut", "thyroid.mut"))
+
+mut.tab$colon.block=c(sum(cosmic.mutation$colon %over% colon.reg$blocks),
+    sum(cosmic.mutation$breast %over% colon.reg$blocks),
+    sum(cosmic.mutation$wilms %over% colon.reg$blocks),
+    sum(cosmic.mutation$lung %over% colon.reg$blocks),
+    sum(cosmic.mutation$pancreas %over% colon.reg$blocks),
+    sum(cosmic.mutation$thyroid %over% colon.reg$blocks))
+
+mut.tab$breast.block=c(sum(cosmic.mutation$colon %over% breast.reg$blocks),
+    sum(cosmic.mutation$breast %over% breast.reg$blocks),
+    sum(cosmic.mutation$wilms %over% breast.reg$blocks),
+    sum(cosmic.mutation$lung %over% breast.reg$blocks),
+    sum(cosmic.mutation$pancreas %over% breast.reg$blocks),
+    sum(cosmic.mutation$thyroid %over% breast.reg$blocks))
+
+mut.tab$kidney.block=c(sum(cosmic.mutation$colon %over% kidney.reg$blocks),
+    sum(cosmic.mutation$breast %over% kidney.reg$blocks),
+    sum(cosmic.mutation$wilms %over% kidney.reg$blocks),
+    sum(cosmic.mutation$lung %over% kidney.reg$blocks),
+    sum(cosmic.mutation$pancreas %over% kidney.reg$blocks),
+    sum(cosmic.mutation$thyroid %over% kidney.reg$blocks))
+
+mut.tab$lung.block=c(sum(cosmic.mutation$colon %over% lung.reg$blocks),
+    sum(cosmic.mutation$breast %over% lung.reg$blocks),
+    sum(cosmic.mutation$wilms %over% lung.reg$blocks),
+    sum(cosmic.mutation$lung %over% lung.reg$blocks),
+    sum(cosmic.mutation$pancreas %over% lung.reg$blocks),
+    sum(cosmic.mutation$thyroid %over% lung.reg$blocks))
+
+mut.tab$pancreas.block=c(sum(cosmic.mutation$colon %over% pancreas.reg$blocks),
+    sum(cosmic.mutation$breast %over% pancreas.reg$blocks),
+    sum(cosmic.mutation$wilms %over% pancreas.reg$blocks),
+    sum(cosmic.mutation$lung %over% pancreas.reg$blocks),
+    sum(cosmic.mutation$pancreas %over% pancreas.reg$blocks),
+    sum(cosmic.mutation$thyroid %over% pancreas.reg$blocks))
+
+mut.tab$thyroid.block=c(sum(cosmic.mutation$colon %over% thyroid.reg$blocks),
+    sum(cosmic.mutation$breast %over% thyroid.reg$blocks),
+    sum(cosmic.mutation$wilms %over% thyroid.reg$blocks),
+    sum(cosmic.mutation$lung %over% thyroid.reg$blocks),
+    sum(cosmic.mutation$pancreas %over% thyroid.reg$blocks),
+    sum(cosmic.mutation$thyroid %over% thyroid.reg$blocks))
+
+mut.tab[1,]=mut.tab[1,]/length(cosmic.mutation$colon)
+mut.tab[2,]=mut.tab[2,]/length(cosmic.mutation$breast)
+mut.tab[3,]=mut.tab[3,]/length(cosmic.mutation$wilms)
+mut.tab[4,]=mut.tab[4,]/length(cosmic.mutation$lung)
+mut.tab[5,]=mut.tab[5,]/length(cosmic.mutation$pancreas)
+mut.tab[6,]=mut.tab[6,]/length(cosmic.mutation$thyroid)
 
 
-panc=dat[,which(pd$Tissue=="pancreas"|
-  grepl("pancreas", pd$Notes)|
-  (pd$Phenotype=="normal"&pd$Tissue %in% c("lung", "liver")))]
-
-pancpd=colData(panc)
-
-pancpd$anno=NA
-##pancpd$anno[pancpd$Notes=="NET"]="NET"
-pancpd$anno[pancpd$Notes=="adenocarcinoma"]="adenocarcinoma"
-##pancpd$anno[pancpd$Phenotype=="metastasis"]=pancpd$Notes[pancpd$Phenotype=="metastasis"]
-pancpd$anno[pancpd$Phenotype=="metastasis"]="metastasis"
-##pancpd$anno[pancpd$Tissue=="lung"&pancpd$Phenotype=="normal"]="lung.normal"
-##pancpd$anno[pancpd$Tissue=="liver"&pancpd$Phenotype=="normal"]="liver.normal"
-pancpd$anno[pancpd$Phenotype=="normal"&pancpd$Tissue=="pancreas"]="pancreas.normal"
-pancpd$anno[pancpd$Phenotype=="adenoma"]="IPMN"
-
-panc=panc[,!is.na(pancpd$anno)]
-colData(panc)=pancpd[!is.na(pancpd$anno),]
-
-
-##Sort blocks and sdmrs on area
-
-osdmr=sdmr[order(-values(sdmr)$area )]
-
-barea=values(blocky)$seg.mean*values(blocky)$num.mark
-
-normy=colData(panc)$anno=="pancreas.normal"
-cancy=colData(panc)$anno=="adenocarcinoma"
-
-bdiff=numeric(length(blocky))
-
-for (i in seq(along=blocky)) {
-  pprobes=rowData(panc) %in% blocky[i]
-  bdiff[i]=median(rowMedians(getBeta(panc[pprobes,cancy]))-
-    rowMedians(getBeta(panc[pprobes,normy])))
-}
-
-oblocky=blocky[order(-abs(bdiff))]
-
-#oblocky=oblocky[(width(oblocky)>1e4)&(oblocky$num.mark>50)]
-
-
-
-##Plot blocks now
-
-pdf(file.path(plotdir, "oblockgg.pdf"), width=11, height=8.5)
-range.plot(panc, oblocky[13], grp="anno", logit=F, num.plot=100)
-dev.off()
-
-
-##Plot dmrs now
-pdf(file.path(plotdir, "osdmrgg2.pdf"), width=11, height=8.5)
-
-range.plot(panc, osdmr, grp="anno", logit=F, num.plot=100)
-dev.off()

@@ -285,8 +285,12 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
       probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
   }
 
-
-  goody=values(probes)$pv < p.thresh & abs(values(probes)$coef)>r.thresh
+  goody=order(-abs(values(probes)$coef))
+  goody=goody[(values(probes)$pv[goody] < p.thresh & abs(values(probes)$coef[goody])>r.thresh)]
+  ##Keep only 1000 most diff/variable
+  if (length(goody)>1000) {
+      goody=goody[1:1000]
+  }
 
   sub=dat[goody,]
 
