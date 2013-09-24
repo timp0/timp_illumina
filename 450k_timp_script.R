@@ -83,6 +83,24 @@ if (file.exists(file.path(filedir, "thyroid_cancer.rda"))) {
 }
 
 
+if (file.exists(file.path(filedir, "pancreas_cancer.rda"))) {
+    load(file=file.path(filedir,"pancreas_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    pancreas.reg=canc.dmrblock(dat, tis="pancreas")
+    save(file=file.path(filedir, "pancreas_cancer.rda"), compress="gzip", list=c("pancreas.reg"))
+}
+
+
+if (file.exists(file.path(filedir, "oral_cancer.rda"))) {
+    load(file=file.path(filedir,"oral_cancer.rda"))
+} else {
+    ##Let's get each of the tissue blocks and dmrs
+    oral.reg=canc.dmrblock(dat, tis="oral")
+    save(file=file.path(filedir, "oral_cancer.rda"), compress="gzip", list=c("oral.reg"))
+}
+
+
 
 compname="colon"
 ##Colon as a start
@@ -242,6 +260,21 @@ sig.probe.plot(sub, plotdir=plotdir, ccomp="Phenotype", grps=c("normal", "cancer
 variety.reg.plot(sub, thyroid.reg$dmrs, grp="Phenotype", compname=paste0(compname, "_dmr"), plotdir=plotdir)
 ##Plot blocks
 variety.reg.plot(sub, thyroid.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
+
+
+compname="oral"
+sub=dat[,pd$Tissue=="oral"]
+
+##Make linkage plot with sig probes
+sig.probe.plot(sub, plotdir=plotdir, ccomp="Phenotype", grps=c("normal", "cancer"), compname=compname)
+
+##Plot DMRs
+variety.reg.plot(sub, oral.reg$dmrs, grp="Phenotype", compname=paste0(compname, "_dmr"), plotdir=plotdir)
+##Plot blocks
+variety.reg.plot(sub, oral.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
+
+
+
 
 
 mutdir="~/Dropbox/Data/Genetics/Mutations/092512_dl"
