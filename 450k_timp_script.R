@@ -273,8 +273,22 @@ variety.reg.plot(sub, oral.reg$dmrs, grp="Phenotype", compname=paste0(compname, 
 ##Plot blocks
 variety.reg.plot(sub, oral.reg$blocks, grp="Phenotype", compname=paste0(compname, "_block"), plotdir=plotdir)
 
+##Specifically for Andy/Sidransky
+##Look at PAX1, PAX5, ZIC4, PLCB1
+
+load(file.path(codedir, "timp_illumina_data", "gene_island.rda"))
+sid.genes=refseq.genes[values(refseq.genes)$gene.name %in% c("PAX1", "PAX5", "ZIC4", "PLCB1", "HOXC6", "HOXB4", "HOXA9", "HOXA7", "HOXD8", "HOXD9", "HOXD10", "HOXC4", "HOXB13", "HOXC13", "HOXD13", "CDK2NA", "NID2", "EDNRB", "KIF1A", "DCC")]
+
+##Make sid.genes all 1e6 
+big.sid.genes=resize(sid.genes, width=1e6, fix="center")
 
 
+sid.blocks=oral.reg$blocks[oral.reg$blocks %over% sid.genes]
+near.sid.blocks=oral.reg$blocks[unique(nearest(sid.genes, oral.reg$blocks))]
+
+variety.reg.plot(sub, sid.blocks, grp="Phenotype", compname=paste0(compname, "_sid_block"), plotdir=plotdir)
+variety.reg.plot(sub, near.sid.blocks, grp="Phenotype", compname=paste0(compname, "_nearsid_block"), plotdir=plotdir)
+variety.reg.plot(sub, big.sid.genes, grp="Phenotype", compname=paste0(compname, "_sid_genes"), plotdir=plotdir)
 
 
 mutdir="~/Dropbox/Data/Genetics/Mutations/092512_dl"
