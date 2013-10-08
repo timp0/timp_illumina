@@ -120,6 +120,45 @@ range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.pl
   
 }
 
+range.stats <- function(dat, tab, logit=F) {
+  ##Incoming tab is a GRanges
+
+  require(GenomicRanges)
+  require(foreach)
+  require(plyr)
+  
+  staty=foreach (i=1:length(tab),.combine='rbind') %dopar% {
+      ##Find probes in that region      
+      pprobes=which(rowData(dat) %over% tab[i])
+      subdat=dat[pprobes,]
+      melted=dat.melt(subdat, logit=logit)
+      rangevars=ddply(melted, .(pid), function(x) {y=daply(x, .(Phenotype), function(x) {var(x$value)})})
+      deltas=combn(colnames(rangevars)[-1],2)
+      for (j in 1:dim(deltas)[2]) {
+          rangevars=cbind(rangevars, (rangevars[deltas[1,j]]-rangevars[deltas[2,j]]))
+          colnames(rangevars)[length(rangevars)]=paste(deltas[1,j], deltas[2,j], sep='-')
+      }
+      rangevars=apply(rangevars[-1],2,median)
+      names(rangevars)=paste('var', names(rangevars), sep='.')
+
+      rangemeds=ddply(melted, .(pid), function(x) {y=daply(x, .(Phenotype), function(x) {median(x$value)})})
+      deltas=combn(colnames(rangemeds)[-1],2)
+      for (j in 1:dim(deltas)[2]) {
+          rangemeds=cbind(rangemeds, (rangemeds[deltas[1,j]]-rangemeds[deltas[2,j]]))
+          colnames(rangemeds)[length(rangemeds)]=paste(deltas[1,j], deltas[2,j], sep='-')
+      }
+      rangemeds=apply(rangemeds[-1],2,median)
+      names(rangemeds)=paste('med', names(rangemeds), sep='.')
+      
+      return(cbind(t(rangemeds), t(rangevars)))
+  }
+  
+}
+
+
+
+
+
 anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir="~/Code/timp_illumina") {
   ##Plot with annotaiton objects
   

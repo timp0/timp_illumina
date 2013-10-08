@@ -33,6 +33,10 @@ if (file.exists(file.path(filedir, "cancer.rda"))) {
 
 pd=colData(dat)
 
+collapse.cluster <- cpgCollapse(dat)
+probey=rowData(dat)
+
+
 load("~/Dropbox/Data/Genetics/Infinium/091013_writing/rafa_blocks.rda")
 load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
 
@@ -40,25 +44,48 @@ load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
 
 
 ##Ok - find all genes in blocks/genes out of rafablocks
+
+##Rafa blocks are sometimes of length 0, I assume because he has set the end to same as start?  Let's see if using end+1 helps
 breast.block=blocks[[1]]$table
-breast.block.gr=GRanges(seqnames=breast.block$chr, ranges=IRanges(start=breast.block$start, end=breast.block$end),
-    delta=breast.block$value)
+breast.block.gr=foreach(i=1:dim(breast.block)[1], .combine='c') %dopar% {
+    GRanges(seqnames=breast.block$chr[i], ranges=IRanges(
+                                              start=min(start(probey[collapse.cluster$blockInfo$indexes[[breast.block$indexStart[i]]]])),
+                                              end=max(end(probey[collapse.cluster$blockInfo$indexes[[breast.block$indexEnd[i]]]]))),
+            delta=breast.block$value[i])
+}
 
 colon.block=blocks[[5]]$table
-colon.block.gr=GRanges(seqnames=colon.block$chr, ranges=IRanges(start=colon.block$start, end=colon.block$end),
-    delta=colon.block$value)
+colon.block.gr=foreach(i=1:dim(colon.block)[1], .combine='c') %dopar% {
+    GRanges(seqnames=colon.block$chr[i], ranges=IRanges(
+                                             start=min(start(probey[collapse.cluster$blockInfo$indexes[[colon.block$indexStart[i]]]])),
+                                             end=max(end(probey[collapse.cluster$blockInfo$indexes[[colon.block$indexEnd[i]]]]))),
+            delta=colon.block$value[i])
+}
 
 lung.block=blocks[[14]]$table
-lung.block.gr=GRanges(seqnames=lung.block$chr, ranges=IRanges(start=lung.block$start, end=lung.block$end),
-    delta=lung.block$value)
+lung.block.gr=foreach(i=1:dim(lung.block)[1], .combine='c') %dopar% {
+    GRanges(seqnames=lung.block$chr[i], ranges=IRanges(
+                                           start=min(start(probey[collapse.cluster$blockInfo$indexes[[lung.block$indexStart[i]]]])),
+                                           end=max(end(probey[collapse.cluster$blockInfo$indexes[[lung.block$indexEnd[i]]]]))),
+            delta=lung.block$value[i])
+        }
 
 pancreas.block=blocks[[15]]$table
-pancreas.block.gr=GRanges(seqnames=pancreas.block$chr, ranges=IRanges(start=pancreas.block$start, end=pancreas.block$end),
-    delta=pancreas.block$value)
+pancreas.block.gr=foreach(i=1:dim(pancreas.block)[1], .combine='c') %dopar% {
+    GRanges(seqnames=pancreas.block$chr[i], ranges=IRanges(
+                                           start=min(start(probey[collapse.cluster$blockInfo$indexes[[pancreas.block$indexStart[i]]]])),
+                                           end=max(end(probey[collapse.cluster$blockInfo$indexes[[pancreas.block$indexEnd[i]]]]))),
+            delta=pancreas.block$value[i])
+}
+
 
 thyroid.block=blocks[[18]]$table
-thyroid.block.gr=GRanges(seqnames=thyroid.block$chr, ranges=IRanges(start=thyroid.block$start, end=thyroid.block$end),
-    delta=thyroid.block$value)
+thyroid.block.gr=foreach(i=1:dim(thyroid.block)[1], .combine='c') %dopar% {
+    GRanges(seqnames=thyroid.block$chr[i], ranges=IRanges(
+                                           start=min(start(probey[collapse.cluster$blockInfo$indexes[[thyroid.block$indexStart[i]]]])),
+                                           end=max(end(probey[collapse.cluster$blockInfo$indexes[[thyroid.block$indexEnd[i]]]]))),
+            delta=thyroid.block$value[i])
+}
 
 
 ##Trying synapse
@@ -140,4 +167,22 @@ mut.tab[4,]=mut.tab[5,]/length(pancreas.mut.gr)
 mut.tab[5,]=mut.tab[5,]/length(thyroid.mut.gr)
 
 write.csv(mut.tab, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'tcga_block_mut.csv'))
+
+
+
+## Block variation
+
+compname="simpcolon"
+##Simple Colon
+sub=dat[,(pd$Tissue=="colon")]
+subpd=colData(sub)
+
+subpd$anno=NA
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="normal"]="colon.normal"
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="adenoma"]="colon.adenoma"
+subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="cancer"]="colon.cancer"
+subpd$anno[grepl("metastasis", subpd$Notes)]="colon.metastasis"
+
+sub=sub[,!is.na(subpd$anno)]
+colData(sub)=subpd[!is.na(subpd$anno),]
 
