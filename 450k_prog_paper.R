@@ -40,9 +40,6 @@ probey=rowData(dat)
 load("~/Dropbox/Data/Genetics/Infinium/091013_writing/rafa_blocks.rda")
 load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
 
-##First, let's get hugo symbols for all refseq
-
-
 ##Ok - find all genes in blocks/genes out of rafablocks
 
 ##Rafa blocks are sometimes of length 0, I assume because he has set the end to same as start?  Let's see if using end+1 helps
@@ -53,6 +50,13 @@ breast.block.gr=foreach(i=1:dim(breast.block)[1], .combine='c') %dopar% {
                                               end=max(end(probey[collapse.cluster$blockInfo$indexes[[breast.block$indexEnd[i]]]]))),
             delta=breast.block$value[i])
 }
+
+
+#Rafa method
+#ind <- breast.block$indexStart
+#st=granges(collapse.cluster$object)[ind,] ##this is the left side of the block
+
+
 
 colon.block=blocks[[5]]$table
 colon.block.gr=foreach(i=1:dim(colon.block)[1], .combine='c') %dopar% {
@@ -172,7 +176,6 @@ write.csv(mut.tab, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 
 
 ## Block variation
 
-compname="simpcolon"
 ##Simple Colon
 sub=dat[,(pd$Tissue=="colon")]
 subpd=colData(sub)
@@ -186,3 +189,38 @@ subpd$anno[grepl("metastasis", subpd$Notes)]="colon.metastasis"
 sub=sub[,!is.na(subpd$anno)]
 colData(sub)=subpd[!is.na(subpd$anno),]
 
+colon.stats=range.stats(sub, colon.block.gr, logit=F)
+
+
+compname="pancreassimple"
+sub=dat[,which(pd$Tissue=="pancreas"|grepl("pancreas", pd$Notes))]
+
+subpd=colData(sub)
+
+subpd$anno=NA
+subpd$anno[subpd$Notes=="adenocarcinoma"]="pancreas.cancer"
+subpd$anno[subpd$Phenotype=="metastasis"]="metastasis"
+subpd$anno[subpd$Phenotype=="normal"&subpd$Tissue=="pancreas"]="pancreas.normal"
+subpd$anno[subpd$Phenotype=="adenoma"]="IPMN"
+
+sub=sub[,!is.na(subpd$anno)]
+colData(sub)=subpd[!is.na(subpd$anno),]
+
+pancreas.stats=range.stats(sub, pancreas.block.gr, logit=F)
+
+
+compname="breast"
+sub=dat[,pd$Tissue=="breast"]
+
+breast.stats=range.stats(sub, breast.block.gr, logit=F)
+
+
+compname="lung"
+sub=dat[,pd$Tissue=="lung"]
+
+lung.stats=range.stats(sub, lung.block.gr, logit=F)
+
+compname="thyroid"
+sub=dat[,pd$Tissue=="thyroid"]
+
+thyroid.stats=range.stats(sub, thyroid.block.gr, logit=F)
