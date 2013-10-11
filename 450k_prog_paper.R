@@ -5,6 +5,7 @@ expdatapath="/mithril/Data/Infinium"
 
 source(file.path(codedir,"450k_general_init.R"))
 
+library(qvalue)
 require(doMC)
 registerDoMC()
 cores=4
@@ -44,52 +45,78 @@ load("~/Dropbox/Data/Genetics/MethSeq/072111_blocks/gene_island.rda")
 
 ##Rafa blocks are sometimes of length 0, I assume because he has set the end to same as start?  Let's see if using end+1 helps
 breast.block=blocks[[1]]$table
+breast.block$q.value=qvalue(breast.block$p.value)$qvalues
 breast.block.gr=foreach(i=1:dim(breast.block)[1], .combine='c') %dopar% {
     GRanges(seqnames=breast.block$chr[i], ranges=IRanges(
                                               start=min(start(probey[collapse.cluster$blockInfo$indexes[[breast.block$indexStart[i]]]])),
                                               end=max(end(probey[collapse.cluster$blockInfo$indexes[[breast.block$indexEnd[i]]]]))),
-            delta=breast.block$value[i])
+            delta=breast.block$value[i], q.value=breast.block$q.value[i])
 }
+sum(values(breast.block.gr)$q.value<.05)
+length(breast.block.gr)
+breast.block.gr=breast.block.gr[values(breast.block.gr)$q.value<.05]
+
 
 
 #Rafa method
-#ind <- breast.block$indexStart
+#ind <- colon.block$indexStart
 #st=granges(collapse.cluster$object)[ind,] ##this is the left side of the block
 
-
-
 colon.block=blocks[[5]]$table
+colon.block$q.value=qvalue(colon.block$p.value)$qvalues
 colon.block.gr=foreach(i=1:dim(colon.block)[1], .combine='c') %dopar% {
     GRanges(seqnames=colon.block$chr[i], ranges=IRanges(
                                              start=min(start(probey[collapse.cluster$blockInfo$indexes[[colon.block$indexStart[i]]]])),
                                              end=max(end(probey[collapse.cluster$blockInfo$indexes[[colon.block$indexEnd[i]]]]))),
-            delta=colon.block$value[i])
+                        delta=colon.block$value[i], q.value=colon.block$q.value[i])
 }
+sum(values(colon.block.gr)$q.value<.05)
+length(colon.block.gr)
+colon.block.gr=colon.block.gr[values(colon.block.gr)$q.value<.05]
+
+
+pdf(file.path(plotdir, "pvalhist.pdf"))
+print(ggplot(colon.block, aes(x=p.value))+geom_histogram())
+dev.off()
+
 
 lung.block=blocks[[14]]$table
+lung.block$q.value=qvalue(lung.block$p.value)$qvalues
 lung.block.gr=foreach(i=1:dim(lung.block)[1], .combine='c') %dopar% {
     GRanges(seqnames=lung.block$chr[i], ranges=IRanges(
                                            start=min(start(probey[collapse.cluster$blockInfo$indexes[[lung.block$indexStart[i]]]])),
                                            end=max(end(probey[collapse.cluster$blockInfo$indexes[[lung.block$indexEnd[i]]]]))),
-            delta=lung.block$value[i])
-        }
+                        delta=lung.block$value[i], q.value=lung.block$q.value[i])
+}
+sum(values(lung.block.gr)$q.value<.05)
+length(lung.block.gr)
+lung.block.gr=lung.block.gr[values(lung.block.gr)$q.value<.05]
+
 
 pancreas.block=blocks[[15]]$table
+pancreas.block$q.value=qvalue(pancreas.block$p.value)$qvalues
 pancreas.block.gr=foreach(i=1:dim(pancreas.block)[1], .combine='c') %dopar% {
     GRanges(seqnames=pancreas.block$chr[i], ranges=IRanges(
                                            start=min(start(probey[collapse.cluster$blockInfo$indexes[[pancreas.block$indexStart[i]]]])),
                                            end=max(end(probey[collapse.cluster$blockInfo$indexes[[pancreas.block$indexEnd[i]]]]))),
-            delta=pancreas.block$value[i])
+            delta=pancreas.block$value[i], q.value=pancreas.block$q.value[i])
 }
+sum(values(pancreas.block.gr)$q.value<.05)
+length(pancreas.block.gr)
+pancreas.block.gr=pancreas.block.gr[values(pancreas.block.gr)$q.value<.05]
 
 
 thyroid.block=blocks[[18]]$table
+thyroid.block$q.value=qvalue(thyroid.block$p.value)$qvalues
 thyroid.block.gr=foreach(i=1:dim(thyroid.block)[1], .combine='c') %dopar% {
     GRanges(seqnames=thyroid.block$chr[i], ranges=IRanges(
                                            start=min(start(probey[collapse.cluster$blockInfo$indexes[[thyroid.block$indexStart[i]]]])),
                                            end=max(end(probey[collapse.cluster$blockInfo$indexes[[thyroid.block$indexEnd[i]]]]))),
-            delta=thyroid.block$value[i])
+            delta=thyroid.block$value[i], q.value=thyroid.block$q.value[i])
 }
+sum(values(thyroid.block.gr)$q.value<.05)
+length(thyroid.block.gr)
+thyroid.block.gr=thyroid.block.gr[values(thyroid.block.gr)$q.value<.05]
 
 
 ##Trying synapse
@@ -170,6 +197,21 @@ mut.tab[3,]=mut.tab[4,]/length(lung.mut.gr)
 mut.tab[4,]=mut.tab[5,]/length(pancreas.mut.gr)
 mut.tab[5,]=mut.tab[5,]/length(thyroid.mut.gr)
 
+library(BSgenome.Hsapiens.UCSC.hg19)
+chrnames=c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
+      "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
+      "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")
+hg19.len=foreach(i=1:24, .combine="sum") %dopar% {
+    len=nchar(Hsapiens[[chrnames[i]]])
+    return(as.numeric(len))
+}
+
+mut.tab$tot.muts=c(length(colon.mut.gr), length(breast.mut.gr), length(lung.mut.gr), length(pancreas.mut.gr), length(thyroid.mut.gr))
+
+mut.tab[6,]=c(sum(width(colon.block.gr))/hg19.len, sum(width(breast.block.gr))/hg19.len, sum(width(lung.block.gr))/hg19.len,
+           sum(width(pancreas.block.gr))/hg19.len, sum(width(thyroid.block.gr))/hg19.len, 0)
+
+
 write.csv(mut.tab, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'tcga_block_mut.csv'))
 
 
@@ -190,7 +232,7 @@ sub=sub[,!is.na(subpd$anno)]
 colData(sub)=subpd[!is.na(subpd$anno),]
 
 colon.stats=range.stats(sub, colon.block.gr, logit=F)
-
+write.csv(colon.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'colon_block_stats.csv'))
 
 compname="pancreassimple"
 sub=dat[,which(pd$Tissue=="pancreas"|grepl("pancreas", pd$Notes))]
@@ -207,20 +249,22 @@ sub=sub[,!is.na(subpd$anno)]
 colData(sub)=subpd[!is.na(subpd$anno),]
 
 pancreas.stats=range.stats(sub, pancreas.block.gr, logit=F)
-
+write.csv(pancreas.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'pancreas_block_stats.csv'))
 
 compname="breast"
 sub=dat[,pd$Tissue=="breast"]
 
 breast.stats=range.stats(sub, breast.block.gr, logit=F)
-
+write.csv(breast.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'breast_block_stats.csv'))
 
 compname="lung"
 sub=dat[,pd$Tissue=="lung"]
 
 lung.stats=range.stats(sub, lung.block.gr, logit=F)
+write.csv(lung.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'lung_block_stats.csv'))
 
 compname="thyroid"
 sub=dat[,pd$Tissue=="thyroid"]
 
 thyroid.stats=range.stats(sub, thyroid.block.gr, logit=F)
+write.csv(thyroid.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'thyroid_block_stats.csv'))
