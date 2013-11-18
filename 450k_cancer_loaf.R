@@ -1,7 +1,7 @@
 source("450k_cancer_loadin.R")
 
 ##Put us in the right dir for output
-setwd("~/Data/Infinium/020312_analysis/")
+setwd("~/Data/Genetics/Infinium/020312_analysis/")
 
 isl.probes=values(gprobes)$minfi.idx[values(gprobes)$dist.island==0]
 

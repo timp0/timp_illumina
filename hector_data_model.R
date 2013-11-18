@@ -3,7 +3,7 @@ if (!exists("codedir")) {
   codedir=getwd()
 }
 
-source(paste(codedir,"450k_sum_stats.R", sep="/"))
+source(paste(codedir,"450k_timp_plotting.R", sep="/"))
 source(paste(codedir,"OU_model.R", sep="/"))
 
 library(minfiLocal)
@@ -11,7 +11,7 @@ library(grid)
 
 
 ##load in probes hector sent as csv
-setwd("~/Data/Infinium/022412_analysis")
+setwd("~/Dropbox/Data/Genetics/Infinium/022412_analysis")
 
 hector.select=read.csv("winstonTab.csv", stringsAsFactors=F)
 
@@ -74,7 +74,7 @@ tis.var=apply(norm.vals,1, var)
 
 
 
-pdf("Plots/probe_simul.pdf", width=11, height=8.5)
+pdf("Plots/probe_simul_new.pdf", width=11, height=8.5)
 for (i in 1:length(hector.probes)) {
   grid.newpage()
   grid.text(hector.select$X[i], x=0.5, y=.98)

@@ -67,7 +67,6 @@ sres=bumphunter(sub, design, B=100, smooth=TRUE, smoothFunction=loessByCluster)
 cobj=cpgCollapse(sub)
 blocks=blockFinder(cobj$object,design,B=100)
 
-##>>>>>here!
 ##Plot clusters
 pdf(file.path(plotdir, paste0("mds.pdf")), width=11, height=8.5)
 cg.cluster(panc, ccomp="anno", grps=c("pancreas.normal", "adenocarcinoma"))
