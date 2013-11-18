@@ -39,7 +39,7 @@ dat.melt <- function(dat, logit=T) {
   ##Label columns apporpriately of melted matrix
   names(melted)=c("pid", "sid", "value")
   panno=rowData(dat)
-  sanno=colData(dat)
+  sanno=as.data.frame(colData(dat))
   ##Add probe annotation - because duplicates in rownames of gprobes->data.frame, row.names=NULL
   melted=cbind(melted, as.data.frame(panno[match(melted$pid, names(panno))], row.names=NULL))
   ##Add sample annotation
@@ -47,7 +47,7 @@ dat.melt <- function(dat, logit=T) {
   return(melted)
 }
 
-range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.plot=25) {
+range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.plot=25, span=.5) {
   ##Incoming tab is a GRanges
 
   require(GenomicRanges)
@@ -77,7 +77,7 @@ range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.pl
     plot.range=resize(tab[i], width=extra.width, fix="center")
 
     ##Find probes in that region
-    pprobes=which(rowData(dat) %in% plot.range)
+    pprobes=which(rowData(dat) %over% plot.range)
 
     subdat=dat[pprobes,]
 
@@ -86,22 +86,25 @@ range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.pl
     rect=data.frame(xmin=start(tab[i]), xmax=end(tab[i]),
       ymin=-Inf, ymax=Inf)  
     
-    to.plot=ggplot()+theme_bw()+theme(panel.grid.major.y=element_blank(), panel.grid.minor.y=element_blank(),
-      panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank())
-      labs(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range))))
+    to.plot=ggplot()+theme_bw()+theme(panel.grid.major.y=element_blank(),
+        panel.grid.minor.y=element_blank(),panel.grid.major.x=element_blank(), panel.grid.minor.x=element_blank())
+    labs(title=paste0("Region:", i, " Chromsome:",as.character(seqnames(plot.range))))
 
     ##region overlay
-    to.plot=to.plot+geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), colour="grey", alpha=.05)
 
-    
+    to.plot=to.plot+geom_rect(data=rect, aes(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax), colour="grey", alpha=.05)
+   
     ##If too many points, just plot lines(saves ugly block pictures)
     if (length(pprobes)>50) {
-      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp, group=grp2), alpha=.2, method="loess", span=.1)
-      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp), size=1, alpha=1, method="loess", span=.1)     
+        to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp, group=grp2),
+           alpha=.2, method="loess", span=span)
+      to.plot=to.plot+geom_line(data=melted, stat="smooth", aes_string(x="start", y="value", colour=grp), size=1,
+          alpha=1, method="loess", span=span)     
     } else {
       if (length(pprobes)>2) {
-        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), method="loess", alpha=.1, span=100)
-        ##, se=F, alpha=.1, method="loess", span=.1)
+        to.plot=to.plot+stat_smooth(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp),
+            method="loess", alpha=.1, span=span)
+
       }
       to.plot=to.plot+geom_jitter(data=melted, aes_string(x="start", y="value", colour=grp, fill=grp), alpha=0.5)
     }
@@ -116,6 +119,45 @@ range.plot <- function(dat, tab, grp="Status", grp2="Sample.ID", logit=T, num.pl
   }
   
 }
+
+range.stats <- function(dat, tab, logit=F) {
+  ##Incoming tab is a GRanges
+
+  require(GenomicRanges)
+  require(foreach)
+  require(plyr)
+  
+  staty=foreach (i=1:length(tab),.combine='rbind') %dopar% {
+      ##Find probes in that region      
+      pprobes=which(rowData(dat) %over% tab[i])
+      subdat=dat[pprobes,]
+      melted=dat.melt(subdat, logit=logit)
+      rangevars=ddply(melted, .(pid), function(x) {y=daply(x, .(Phenotype), function(x) {var(x$value)})})
+      deltas=combn(colnames(rangevars)[-1],2)
+      for (j in 1:dim(deltas)[2]) {
+          rangevars=cbind(rangevars, (rangevars[deltas[1,j]]-rangevars[deltas[2,j]]))
+          colnames(rangevars)[length(rangevars)]=paste(deltas[1,j], deltas[2,j], sep='-')
+      }
+      rangevars=apply(rangevars[-1],2,median)
+      names(rangevars)=paste('var', names(rangevars), sep='.')
+
+      rangemeds=ddply(melted, .(pid), function(x) {y=daply(x, .(Phenotype), function(x) {median(x$value)})})
+      deltas=combn(colnames(rangemeds)[-1],2)
+      for (j in 1:dim(deltas)[2]) {
+          rangemeds=cbind(rangemeds, (rangemeds[deltas[1,j]]-rangemeds[deltas[2,j]]))
+          colnames(rangemeds)[length(rangemeds)]=paste(deltas[1,j], deltas[2,j], sep='-')
+      }
+      rangemeds=apply(rangemeds[-1],2,median)
+      names(rangemeds)=paste('med', names(rangemeds), sep='.')
+      
+      return(cbind(t(rangemeds), t(rangevars)))
+  }
+  
+}
+
+
+
+
 
 anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir="~/Code/timp_illumina") {
   ##Plot with annotaiton objects
@@ -142,7 +184,7 @@ anno.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, coded
     
     ##Find probes in that region
 
-    subdat=dat[which(rowData(dat) %in% plot.area),]
+    subdat=dat[which(rowData(dat) %over% plot.area),]
     
     pprobes=rowData(subdat)
     
@@ -227,7 +269,7 @@ st.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir
     
     ##Find probes in that region
 
-    subdat=dat[which(rowData(dat) %in% plot.area),]
+    subdat=dat[which(rowData(dat) %over% plot.area),]
     
     pprobes=as.data.frame(rowData(subdat))
     pprobes$col="red"
@@ -265,7 +307,7 @@ st.region.plot <- function(dat, tab, grp="status", logit=T, num.plot=25, codedir
 }
 
 
-cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5) {
+cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5, var=F) {
   ##This function makes a linkage tree uses unsupervised heirarchical clustering
 
   require(ggplot2)
@@ -273,10 +315,21 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
   require(RColorBrewer)
   require(gplots)
   
-  ##Do limma t-test on probes
-  probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
 
-  goody=values(probes)$pv < p.thresh & abs(values(probes)$coef)>r.thresh
+  if (var) {
+      ##Do F-test on probes
+      probes=cg.vmtest(dat, ccomp=ccomp, grps=grps)
+  } else {
+      ##Do limma t-test on probes
+      probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
+  }
+
+  goody=order(-abs(values(probes)$coef))
+  goody=goody[(values(probes)$pv[goody] < p.thresh & abs(values(probes)$coef[goody])>r.thresh)]
+  ##Keep only 1000 most diff/variable
+  if (length(goody)>1000) {
+      goody=goody[1:1000]
+  }
 
   sub=dat[goody,]
 
@@ -287,7 +340,7 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
 
   coly=brewer.pal(9, "Set1")
 
-  sampy=factor(colData(dat)$anno)
+  sampy=factor(colData(dat)[[ccomp]])
 
   heatmap.2(y, dendrogram="column", trace="none", labCol=colData(sub)$Sample.ID,
                         ColSideColors=coly[sampy],  labRow="", col=brewer.pal(11, "RdYlBu"))
@@ -304,7 +357,7 @@ cg.dendro <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thre
 reg.cluster <- function(dat, tab, ccomp="Phenotype") {
   ##This function does mds and scatter based on regions
 
-  pprobes=which(rowData(dat) %in% tab)
+  pprobes=which(rowData(dat) %over% tab)
 
   sub=dat[pprobes,]
   
@@ -313,45 +366,100 @@ reg.cluster <- function(dat, tab, ccomp="Phenotype") {
   
     
   print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point(size=2.5) + 
-        theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Dark2"))
+        theme_bw()+labs(title=ccomp) + scale_colour_brewer(type="qual", palette="Dark2"))
 
 }
 
-cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), p.thresh=1e-5, r.thresh=2.5, volcano=F) {
+cg.cluster <- function(dat, ccomp="Phenotype", grps=c("normal", "cancer"), var=F,
+                       p.thresh=1e-5, r.thresh=2.5, volcano=F, top=NULL) {
   ##This function does mds of probes which show a difference, seperated by regional differences
 
   require(ggplot2)
   require(limma)
   require(plyr)
 
-  
-  ##Do limma t-test on probes
-  probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
 
+  if (var) {
+      ##Do F-test on probes
+      probes=cg.vmtest(dat)
+  } else {
+      ##Do limma t-test on probes
+      probes=cg.dmtest(dat, ccomp=ccomp, grps=grps)
+  }
+
+ 
   ##Make volcano plot
   volcano.probes=as.data.frame(values(probes))
   if (volcano) {
-    print(ggplot(volcano.probes, aes(x=coef, y=pv))+geom_point()+facet_wrap(~islrelate, scales="free")+
-          theme_bw()+scale_y_log10()+labs(title="Volcano"))
+      print(ggplot(volcano.probes, aes(x=coef, y=pv))+geom_point()+facet_wrap(~islrelate, scales="free")+
+            theme_bw()+scale_y_log10()+labs(title="Volcano"))
   }
+  
   goody=which(volcano.probes$pv < p.thresh & abs(volcano.probes$coef)>r.thresh)
   
   pass.probes=data.frame(idx=goody, type=volcano.probes$islrelate[goody])
   
-
+  
   md.probes=ddply(pass.probes, .(type), function(x) {md=cmdscale(dist(t(getM(dat[x$idx,]))));
-                                                  y=data.frame(outcome=colData(dat)[[ccomp]], 
-                                                    x=md[,1], y=md[,2]); return(y)})
-                                                    
+                                                     y=data.frame(outcome=colData(dat)[[ccomp]], 
+                                                         x=md[,1], y=md[,2]); return(y)})
+  
   print(ggplot(md.probes, aes(x=x, y=y, colour=outcome))+geom_point() + facet_wrap(~type, scales="free")+
-          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-"))+ scale_colour_brewer(type="qual", palette="Set1"))
+        theme_bw()+labs(title=paste(grps[1], grps[2], sep="-"))+ scale_colour_brewer(type="qual", palette="Set1"))
   
   fullmd=cmdscale(dist(t(getM(dat[pass.probes$idx,]))))
   fullmd.probes=data.frame(x=fullmd[,1], y=fullmd[,2], outcome=colData(dat)[[ccomp]])
-
+  
   print(ggplot(fullmd.probes, aes(x=x, y=y, colour=outcome))+geom_point() +
-          theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Set1"))
+        theme_bw()+labs(title=paste(grps[1], grps[2], sep="-")) + scale_colour_brewer(type="qual", palette="Set1"))
   
 }
 
 
+
+sig.probe.plot <- function(dat, plotdir="~/Dropbox/Temp", ccomp="anno", compname="colon",
+                           grps=c("colon.normal", "colon.cancer"), volcano=F) {
+    ##this function takes a set of data, and makes comparison plots for the most significantly
+    ##different via t-test and F-test
+    
+    
+    ##Plot clusters on t-test
+    pdf(file.path(plotdir, paste0("mds_tt_", compname, ".pdf")), width=11, height=8.5)
+    cg.cluster(dat, ccomp=ccomp, grps=grps, volcano=volcano)
+    cg.dendro(dat, ccomp=ccomp, grps=grps)
+    dev.off()
+
+
+    ##Plot clusters on F-test
+    pdf(file.path(plotdir, paste0("mds_ft_", compname, ".pdf")), width=11, height=8.5)
+    cg.cluster(dat, ccomp=ccomp, grps=grps, var=T, volcano=volcano)
+    cg.dendro(dat, ccomp=ccomp, grps=grps, var=T)
+    dev.off()
+
+    ##Plot clusters on opp F-test
+    pdf(file.path(plotdir, paste0("mds_ft_opp", compname, ".pdf")), width=11, height=8.5)
+    cg.cluster(dat, ccomp=ccomp, grps=rev(grps), var=T, volcano=volcano)
+    cg.dendro(dat, ccomp=ccomp, grps=rev(grps), var=T)
+    dev.off()    
+
+}
+
+variety.reg.plot <- function(dat, regs, grp="anno", compname="colon", logit=F,
+                             plotdir="~Dropbox/Temp") {
+    ##This function plots regions with various plots
+    
+    pdf(file.path(plotdir, paste0("ggplot_", compname, ".pdf")), width=11, height=8.5)
+    range.plot(dat, regs, grp=grp, logit=logit)
+    dev.off()
+    
+    pdf(file.path(plotdir, paste0("gviz_", compname, ".pdf")), width=11, height=8.5)
+    anno.region.plot(dat, regs, grp=grp, logit=logit)
+    dev.off()
+    
+    pdf(file.path(plotdir, paste0("mds_", compname, ".pdf")), width=11, height=8.5)
+    reg.cluster(dat, regs, ccomp=grp)
+    dev.off()
+
+}
+
+    
