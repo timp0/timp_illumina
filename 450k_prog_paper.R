@@ -6,6 +6,7 @@ expdatapath="/mithril/Data/Infinium"
 source(file.path(codedir,"450k_general_init.R"))
 
 library(qvalue)
+library(ggplot2)
 require(doMC)
 registerDoMC()
 cores=4
@@ -36,6 +37,8 @@ pd=colData(dat)
 
 collapse.cluster <- cpgCollapse(dat)
 probey=rowData(dat)
+
+
 
 
 load("~/Dropbox/Data/Genetics/Infinium/091013_writing/rafa_blocks.rda")
@@ -118,153 +121,170 @@ sum(values(thyroid.block.gr)$q.value<.05)
 length(thyroid.block.gr)
 thyroid.block.gr=thyroid.block.gr[values(thyroid.block.gr)$q.value<.05]
 
+if (FALSE) {
 
-##Trying synapse
-library(synapseClient)
-library(GenomicRanges)
-synapseLogin('wtimp@jhu.edu', '1!HGUy0v20tn')
-all.mut <- syn1710680 <- synGet(id='syn1710680')
-
-##BRCA is breast file 2
-##COADREAD is colorectal carcinoma file 4
-##LUAD is Lung adenocarcinoma file 11
-##PAAd is pancreas adenocarcinoma  file 14
-##THCA is thyroid carcinoma file 19
-
-breast.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[2]]), check.names=F)
-breast.mut.gr=GRanges(seqnames=paste0('chr', breast.mut$Chromosome),
-    ranges=IRanges(start=breast.mut$Start_Position, end=breast.mut$End_Position),
-    strand=breast.mut$Strand)
-        
-colon.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[4]]), check.names=F)
-colon.mut.gr=GRanges(seqnames=paste0('chr', colon.mut$Chromosome),
-    ranges=IRanges(start=colon.mut$Start_Position, end=colon.mut$End_Position),
-    strand=colon.mut$Strand)
-
-lung.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[11]]), check.names=F)
-lung.mut.gr=GRanges(seqnames=paste0('chr', lung.mut$Chromosome),
-    ranges=IRanges(start=lung.mut$Start_Position, end=lung.mut$End_Position),
-    strand=lung.mut$Strand)
-
-pancreas.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[14]]), check.names=F)
-pancreas.mut.gr=GRanges(seqnames=paste0('chr', pancreas.mut$Chromosome),
-    ranges=IRanges(start=pancreas.mut$Start_Position, end=pancreas.mut$End_Position),
-    strand=pancreas.mut$Strand)
-
-thyroid.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[19]]), check.names=F)
-thyroid.mut.gr=GRanges(seqnames=paste0('chr', thyroid.mut$Chromosome),
-    ranges=IRanges(start=thyroid.mut$Start_Position, end=thyroid.mut$End_Position),
-    strand=thyroid.mut$Strand)
-
-##Mut table
-
-
-mut.tab=data.frame(row.names=c("colon.mut", "breast.mut", "lung.mut", "pancreas.mut", "thyroid.mut"))
-
-mut.tab$colon.block=c(sum(colon.mut.gr %over% colon.block.gr),
-    sum(breast.mut.gr %over% colon.block.gr),
-    sum(lung.mut.gr %over% colon.block.gr),
-    sum(pancreas.mut.gr %over% colon.block.gr),
-    sum(thyroid.mut.gr %over% colon.block.gr))
-
-mut.tab$breast.block=c(sum(colon.mut.gr %over% breast.block.gr),
-    sum(breast.mut.gr %over% breast.block.gr),
-    sum(lung.mut.gr %over% breast.block.gr),
-    sum(pancreas.mut.gr %over% breast.block.gr),
-    sum(thyroid.mut.gr %over% breast.block.gr))
-
-mut.tab$lung.block=c(sum(colon.mut.gr %over% lung.block.gr),
-    sum(breast.mut.gr %over% lung.block.gr),
-    sum(lung.mut.gr %over% lung.block.gr),
-    sum(pancreas.mut.gr %over% lung.block.gr),
-    sum(thyroid.mut.gr %over% lung.block.gr))
-
-mut.tab$pancreas.block=c(sum(colon.mut.gr %over% pancreas.block.gr),
-    sum(breast.mut.gr %over% pancreas.block.gr),
-    sum(lung.mut.gr %over% pancreas.block.gr),
-    sum(pancreas.mut.gr %over% pancreas.block.gr),
-    sum(thyroid.mut.gr %over% pancreas.block.gr))
-
-mut.tab$thyroid.block=c(sum(colon.mut.gr %over% thyroid.block.gr),
-    sum(breast.mut.gr %over% thyroid.block.gr),
-    sum(lung.mut.gr %over% thyroid.block.gr),
-    sum(pancreas.mut.gr %over% thyroid.block.gr),
-    sum(thyroid.mut.gr %over% thyroid.block.gr))
-
-mut.tab[1,]=mut.tab[1,]/length(colon.mut.gr)
-mut.tab[2,]=mut.tab[2,]/length(breast.mut.gr)
-mut.tab[3,]=mut.tab[4,]/length(lung.mut.gr)
-mut.tab[4,]=mut.tab[5,]/length(pancreas.mut.gr)
-mut.tab[5,]=mut.tab[5,]/length(thyroid.mut.gr)
-
-library(BSgenome.Hsapiens.UCSC.hg19)
-chrnames=c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
-      "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
-      "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")
-hg19.len=foreach(i=1:24, .combine="sum") %dopar% {
-    len=nchar(Hsapiens[[chrnames[i]]])
-    return(as.numeric(len))
+    ##Trying synapse
+    library(synapseClient)
+    library(GenomicRanges)
+    synapseLogin('wtimp@jhu.edu', '1!HGUy0v20tn')
+    all.mut <- syn1710680 <- synGet(id='syn1710680')
+    
+    ##BRCA is breast file 2
+    ##COADREAD is colorectal carcinoma file 4
+    ##LUAD is Lung adenocarcinoma file 11
+    ##PAAd is pancreas adenocarcinoma  file 14
+    ##THCA is thyroid carcinoma file 19
+    
+    breast.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[2]]), check.names=F)
+    breast.mut.gr=GRanges(seqnames=paste0('chr', breast.mut$Chromosome),
+        ranges=IRanges(start=breast.mut$Start_Position, end=breast.mut$End_Position),
+        strand=breast.mut$Strand)
+    
+    colon.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[4]]), check.names=F)
+    colon.mut.gr=GRanges(seqnames=paste0('chr', colon.mut$Chromosome),
+        ranges=IRanges(start=colon.mut$Start_Position, end=colon.mut$End_Position),
+        strand=colon.mut$Strand)
+    
+    lung.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[11]]), check.names=F)
+    lung.mut.gr=GRanges(seqnames=paste0('chr', lung.mut$Chromosome),
+        ranges=IRanges(start=lung.mut$Start_Position, end=lung.mut$End_Position),
+        strand=lung.mut$Strand)
+    
+    pancreas.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[14]]), check.names=F)
+    pancreas.mut.gr=GRanges(seqnames=paste0('chr', pancreas.mut$Chromosome),
+        ranges=IRanges(start=pancreas.mut$Start_Position, end=pancreas.mut$End_Position),
+        strand=pancreas.mut$Strand)
+    
+    thyroid.mut <- read.delim(file.path(all.mut$cacheDir, all.mut$files[[19]]), check.names=F)
+    thyroid.mut.gr=GRanges(seqnames=paste0('chr', thyroid.mut$Chromosome),
+        ranges=IRanges(start=thyroid.mut$Start_Position, end=thyroid.mut$End_Position),
+        strand=thyroid.mut$Strand)
+    
+    ##Mut table
+    
+    
+    mut.tab=data.frame(row.names=c("colon.mut", "breast.mut", "lung.mut", "pancreas.mut", "thyroid.mut"))
+    
+    mut.tab$colon.block=c(sum(colon.mut.gr %over% colon.block.gr),
+        sum(breast.mut.gr %over% colon.block.gr),
+        sum(lung.mut.gr %over% colon.block.gr),
+        sum(pancreas.mut.gr %over% colon.block.gr),
+        sum(thyroid.mut.gr %over% colon.block.gr))
+    
+    mut.tab$breast.block=c(sum(colon.mut.gr %over% breast.block.gr),
+        sum(breast.mut.gr %over% breast.block.gr),
+        sum(lung.mut.gr %over% breast.block.gr),
+        sum(pancreas.mut.gr %over% breast.block.gr),
+        sum(thyroid.mut.gr %over% breast.block.gr))
+    
+    mut.tab$lung.block=c(sum(colon.mut.gr %over% lung.block.gr),
+        sum(breast.mut.gr %over% lung.block.gr),
+        sum(lung.mut.gr %over% lung.block.gr),
+        sum(pancreas.mut.gr %over% lung.block.gr),
+        sum(thyroid.mut.gr %over% lung.block.gr))
+    
+    mut.tab$pancreas.block=c(sum(colon.mut.gr %over% pancreas.block.gr),
+        sum(breast.mut.gr %over% pancreas.block.gr),
+        sum(lung.mut.gr %over% pancreas.block.gr),
+        sum(pancreas.mut.gr %over% pancreas.block.gr),
+        sum(thyroid.mut.gr %over% pancreas.block.gr))
+    
+    mut.tab$thyroid.block=c(sum(colon.mut.gr %over% thyroid.block.gr),
+        sum(breast.mut.gr %over% thyroid.block.gr),
+        sum(lung.mut.gr %over% thyroid.block.gr),
+        sum(pancreas.mut.gr %over% thyroid.block.gr),
+        sum(thyroid.mut.gr %over% thyroid.block.gr))
+    
+    mut.tab[1,]=mut.tab[1,]/length(colon.mut.gr)
+    mut.tab[2,]=mut.tab[2,]/length(breast.mut.gr)
+    mut.tab[3,]=mut.tab[4,]/length(lung.mut.gr)
+    mut.tab[4,]=mut.tab[5,]/length(pancreas.mut.gr)
+    mut.tab[5,]=mut.tab[5,]/length(thyroid.mut.gr)
+    
+    library(BSgenome.Hsapiens.UCSC.hg19)
+    chrnames=c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9",
+        "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
+        "chr19", "chr20", "chr21", "chr22", "chrX", "chrY")
+    hg19.len=foreach(i=1:24, .combine="sum") %dopar% {
+        len=nchar(Hsapiens[[chrnames[i]]])
+        return(as.numeric(len))
+    }
+    
+    mut.tab$tot.muts=c(length(colon.mut.gr), length(breast.mut.gr), length(lung.mut.gr), length(pancreas.mut.gr), length(thyroid.mut.gr))
+    
+    mut.tab[6,]=c(sum(width(colon.block.gr))/hg19.len, sum(width(breast.block.gr))/hg19.len, sum(width(lung.block.gr))/hg19.len,
+               sum(width(pancreas.block.gr))/hg19.len, sum(width(thyroid.block.gr))/hg19.len, 0)
+    
+    
+    write.csv(mut.tab, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'tcga_block_mut.csv'))
+    
 }
 
-mut.tab$tot.muts=c(length(colon.mut.gr), length(breast.mut.gr), length(lung.mut.gr), length(pancreas.mut.gr), length(thyroid.mut.gr))
+if (FALSE) {
+    
+    ## Block variation
+    
+    ##Simple Colon
+    sub=dat[,(pd$Tissue=="colon")]
+    subpd=colData(sub)
+    
+    subpd$anno=NA
+    subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="normal"]="colon.normal"
+    subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="adenoma"]="colon.adenoma"
+    subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="cancer"]="colon.cancer"
+    subpd$anno[grepl("metastasis", subpd$Notes)]="colon.metastasis"
+    
+    sub=sub[,!is.na(subpd$anno)]
+    colData(sub)=subpd[!is.na(subpd$anno),]
+    
+    colon.stats=range.stats(sub, colon.block.gr, logit=F)
+    write.csv(colon.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'colon_block_stats.csv'))
+    
+    compname="pancreassimple"
+    sub=dat[,which(pd$Tissue=="pancreas"|grepl("pancreas", pd$Notes))]
+    
+    subpd=colData(sub)
+    
+    subpd$anno=NA
+    subpd$anno[subpd$Notes=="adenocarcinoma"]="pancreas.cancer"
+    subpd$anno[subpd$Phenotype=="metastasis"]="metastasis"
+    subpd$anno[subpd$Phenotype=="normal"&subpd$Tissue=="pancreas"]="pancreas.normal"
+    subpd$anno[subpd$Phenotype=="adenoma"]="IPMN"
+    
+    sub=sub[,!is.na(subpd$anno)]
+    colData(sub)=subpd[!is.na(subpd$anno),]
+    
+    pancreas.stats=range.stats(sub, pancreas.block.gr, logit=F)
+    write.csv(pancreas.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'pancreas_block_stats.csv'))
+    
+    compname="breast"
+    sub=dat[,pd$Tissue=="breast"]
+    
+    breast.stats=range.stats(sub, breast.block.gr, logit=F)
+    write.csv(breast.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'breast_block_stats.csv'))
+    
+    compname="lung"
+    sub=dat[,pd$Tissue=="lung"]
+    
+    lung.stats=range.stats(sub, lung.block.gr, logit=F)
+    write.csv(lung.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'lung_block_stats.csv'))
+    
+    compname="thyroid"
+    sub=dat[,pd$Tissue=="thyroid"]
+    
+    thyroid.stats=range.stats(sub, thyroid.block.gr, logit=F)
+    write.csv(thyroid.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'thyroid_block_stats.csv'))
+    
+}
 
-mut.tab[6,]=c(sum(width(colon.block.gr))/hg19.len, sum(width(breast.block.gr))/hg19.len, sum(width(lung.block.gr))/hg19.len,
-           sum(width(pancreas.block.gr))/hg19.len, sum(width(thyroid.block.gr))/hg19.len, 0)
 
-
-write.csv(mut.tab, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'tcga_block_mut.csv'))
-
-
-
-## Block variation
-
-##Simple Colon
-sub=dat[,(pd$Tissue=="colon")]
-subpd=colData(sub)
-
-subpd$anno=NA
-subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="normal"]="colon.normal"
-subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="adenoma"]="colon.adenoma"
-subpd$anno[subpd$Tissue=="colon" & subpd$Phenotype=="cancer"]="colon.cancer"
-subpd$anno[grepl("metastasis", subpd$Notes)]="colon.metastasis"
-
-sub=sub[,!is.na(subpd$anno)]
-colData(sub)=subpd[!is.na(subpd$anno),]
-
-colon.stats=range.stats(sub, colon.block.gr, logit=F)
-write.csv(colon.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'colon_block_stats.csv'))
-
-compname="pancreassimple"
-sub=dat[,which(pd$Tissue=="pancreas"|grepl("pancreas", pd$Notes))]
-
-subpd=colData(sub)
-
-subpd$anno=NA
-subpd$anno[subpd$Notes=="adenocarcinoma"]="pancreas.cancer"
-subpd$anno[subpd$Phenotype=="metastasis"]="metastasis"
-subpd$anno[subpd$Phenotype=="normal"&subpd$Tissue=="pancreas"]="pancreas.normal"
-subpd$anno[subpd$Phenotype=="adenoma"]="IPMN"
-
-sub=sub[,!is.na(subpd$anno)]
-colData(sub)=subpd[!is.na(subpd$anno),]
-
-pancreas.stats=range.stats(sub, pancreas.block.gr, logit=F)
-write.csv(pancreas.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'pancreas_block_stats.csv'))
-
-compname="breast"
-sub=dat[,pd$Tissue=="breast"]
-
-breast.stats=range.stats(sub, breast.block.gr, logit=F)
-write.csv(breast.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'breast_block_stats.csv'))
-
-compname="lung"
-sub=dat[,pd$Tissue=="lung"]
-
-lung.stats=range.stats(sub, lung.block.gr, logit=F)
-write.csv(lung.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'lung_block_stats.csv'))
-
-compname="thyroid"
-sub=dat[,pd$Tissue=="thyroid"]
-
-thyroid.stats=range.stats(sub, thyroid.block.gr, logit=F)
-write.csv(thyroid.stats, file.path('~/Dropbox/Data/Genetics/Infinium/091013_writing', 'thyroid_block_stats.csv'))
+if (TRUE) {
+    ## Table of tissues samples
+    tis.info=pd
+    tis.info=tis.info[tis.info$Tissue %in% c('breast', 'colon', 'esophagus', 'kidney', 'liver', 'lung', 'pancreas', 'thyroid'),]
+    ##Relabel tissue of mets
+    tis.info$Tissue[tis.info$Phenotype=='metastasis']=unlist(lapply(tis.info$Notes[tis.info$Phenotype=='metastasis'], function(x) {strsplit(x, '\\.')[[1]][1]}))
+    tis.tab=table(tis.info$Tissue, tis.info$Phenotype)
+    write.csv(tis.tab, file="~/Dropbox/Data/Genetics/Infinium/091013_writing/tis.table.csv")
+    
+}
