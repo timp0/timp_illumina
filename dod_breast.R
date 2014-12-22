@@ -179,7 +179,8 @@ if (TRUE) {
     pdf(file.path(plotdir, "cancer_dmr1.pdf"), width=11, height=8.5)
     
     for (i in 1:50) {
-        rprobes=overlapsAny(probe.gr,resize(cancer.dmr.gr[i], width=width(cancer.dmr.gr[i])*3, fix="center"))
+        #rprobes=overlapsAny(probe.gr,resize(cancer.dmr.gr[i], width=width(cancer.dmr.gr[i])*3, fix="center"))
+        rprobes=overlapsAny(probe.gr,resize(cancer.dmr.gr[i], width=1e4, fix="center"))
         reg=data.frame(x1=start(cancer.dmr.gr[i]), x2=end(cancer.dmr.gr[i]), y1=0, y2=1)
         subdata=breast.beta[rprobes,]
         colnames(subdata)=breast.dat$Phenotype
