@@ -9,7 +9,7 @@ use PerlIO::eol;
 use Archive::Tar;
 use warnings;
 
-my $datapath="/thumper2/feinbergLab/core/arrays/illumina/";
+my $datapath=shift;
 
 ##Get the thing to match
 my $check=shift;
@@ -43,7 +43,7 @@ my $tar = Archive::Tar->new();
 foreach $csv (@csvs) {
     ##$csv=$csvs[8];
     ##Open this CSV file - use eol package to defeat evil mac newline (\r) problems
-    open(INCSV, "<:raw:eol(LF)",$csv);
+    open(INCSV, "<",$csv);
 
 ##Skip all header lines
     while(<INCSV>){
@@ -58,7 +58,8 @@ foreach $csv (@csvs) {
 	    print ANNO $_;
 	    chomp;
 	    @fields=split/\,/;
-	    @needthese=<$datapath$fields[1]/$fields[3]/$fields[3]_$fields[4]*.idat>;
+	    print "$datapath, $fields[1], $fields[4]\n";
+	    @needthese=<$datapath$fields[1]/$fields[4]/$fields[4]_$fields[5]*.idat>;
 	    $tar->add_files( @needthese );
 	}
 	##last;
