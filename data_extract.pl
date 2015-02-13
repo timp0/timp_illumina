@@ -34,7 +34,7 @@ foreach (@maindir) {
 
 ##Open annotation file for our friends
 open(ANNO, ">", "$outdir$annofile");
-print ANNO ("Experimenter,Plate.ID,Sample.Well,Slide.ID,Array.ID,Hyb.date,Image.date,Sample.ID,Sex,Age,Race,Tissue,Status,Phenotype,Individual.ID,Source,Notes,Purification,Input.Amount\n");
+print ANNO ("Experimenter,Plate.ID,Plate_ID,Sample.Well,Slide.ID,Array.ID,Hyb.date,Image.date,Sample.ID,Sex,Age,Race,Tissue,Status,Phenotype,Individual.ID,Source,Notes,Purification,Input.Amount,elution_volume(ul)\n");
 
 ##Make new tar file for data
 my $tar = Archive::Tar->new();
